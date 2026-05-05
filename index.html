@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shipping Quotation – Sidharth Bright Networks</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root{
+  --blue:#0b2d6b;
+  --blue2:#1847a8;
+  --blue3:#2563eb;
+  --blue-lt:#e8f0fe;
+  --blue-lllt:#f0f5ff;
+  --red:#c01728;
+  --red-lt:#fde8ea;
+  --border:#d0daf0;
+  --surface:#f4f7fc;
+  --text:#141829;
+  --muted:#5c6a8a;
+  --white:#ffffff;
+  --green:#16a34a;
+  --green-lt:#f0fdf4;
+  --shadow:0 4px 24px rgba(11,45,107,.10);
+  --shadow-sm:0 2px 8px rgba(11,45,107,.07);
+  --radius:12px;
+  --radius-sm:8px;
+  --font:'DM Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);font-size:13.5px;color:var(--text);background:var(--surface);min-height:100vh}
+
+/* ═══════════════════════════════════════════
+   TOOLBAR
+═══════════════════════════════════════════ */
+#toolbar{
+  background:var(--white);
+  border-bottom:1.5px solid var(--border);
+  padding:11px 24px;
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;z-index:300;
+  box-shadow:0 2px 12px rgba(11,45,107,.08);
+  flex-wrap:wrap;gap:10px;
+}
+.t-brand{font-size:15px;font-weight:700;color:var(--blue);letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.t-brand-dot{width:8px;height:8px;border-radius:50%;background:var(--red)}
+.t-brand span{color:var(--red)}
+.t-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  font-family:var(--font);font-size:12px;font-weight:600;
+  padding:8px 18px;border-radius:var(--radius-sm);border:none;cursor:pointer;
+  transition:all .18s;letter-spacing:.01em;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-new{background:var(--surface);color:var(--blue);border:1.5px solid var(--border)}
+.btn-new:hover{background:var(--blue-lt);border-color:var(--blue3);color:var(--blue2)}
+.btn-print{background:var(--blue);color:#fff}
+.btn-print:hover{background:var(--blue2)}
+.btn-whatsapp{background:var(--green);color:#fff}
+.btn-whatsapp:hover{background:#15803d}
+.btn-print svg,.btn-new svg,.btn-whatsapp svg{width:14px;height:14px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════
+   SHELL
+═══════════════════════════════════════════ */
+#shell{max-width:700px;margin:28px auto 70px;padding:0 14px}
+
+/* ═══════════════════════════════════════════
+   CARD
+═══════════════════════════════════════════ */
+.card{
+  background:var(--white);border-radius:16px;
+  border:1.5px solid var(--border);overflow:hidden;
+  box-shadow:var(--shadow);
+}
+
+/* ═══════════════════════════════════════════
+   CARD HEADER
+═══════════════════════════════════════════ */
+.chdr{
+  background:linear-gradient(130deg,var(--blue) 0%,#1a3d8a 55%,var(--blue2) 100%);
+  padding:24px 28px 20px;position:relative;overflow:hidden;
+}
+.chdr::before{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:220px;height:220px;border-radius:50%;
+  background:rgba(255,255,255,.05);
+}
+.chdr::after{
+  content:'';position:absolute;right:40px;bottom:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:rgba(255,255,255,.04);
+}
+.chdr-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.chdr-name{font-size:21px;font-weight:700;color:#fff;letter-spacing:-.025em;line-height:1.1;margin-bottom:4px}
+.chdr-name em{color:#fca5a5;font-style:normal}
+.chdr-tag{font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:10px}
+.chdr-contact{font-size:12px;color:rgba(255,255,255,.75);line-height:2}
+.chdr-right{text-align:right;flex-shrink:0}
+.chdr-qlbl{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:5px}
+.chdr-qno{font-family:var(--mono);font-size:13.5px;font-weight:700;color:#fff;letter-spacing:.04em;margin-bottom:5px}
+.chdr-date{font-size:11.5px;color:rgba(255,255,255,.65);margin-bottom:2px}
+.chdr-clock{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.38)}
+
+/* RED STRIP */
+.red-strip{height:4px;background:linear-gradient(90deg,var(--red),#e63950)}
+
+/* ═══════════════════════════════════════════
+   CARD BODY
+═══════════════════════════════════════════ */
+.cbody{padding:24px 26px}
+.sec{margin-bottom:22px}
+.sec-ttl{
+  font-size:9.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--blue2);border-bottom:2px solid var(--blue-lt);padding-bottom:6px;
+  margin-bottom:14px;display:flex;align-items:center;gap:7px;
+}
+.sec-ttl::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+/* FIELDS */
+.fl{display:flex;flex-direction:column;gap:5px}
+.fl label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.fl input,.fl select{
+  font-family:var(--font);font-size:13.5px;padding:10px 12px;
+  border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text);width:100%;outline:none;
+  transition:border-color .16s,background .16s,box-shadow .16s;
+}
+.fl input:focus,.fl select:focus{
+  border-color:var(--blue3);background:#fff;
+  box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+.fl input[readonly]{
+  background:#eef2fb;color:var(--blue2);cursor:default;
+  font-family:var(--mono);font-size:12px;font-weight:600;
+}
+.fl .hint{font-size:10.5px;color:var(--blue2);font-weight:600;background:var(--blue-lt);padding:3px 8px;border-radius:4px;margin-top:2px}
+.fl.error input{border-color:var(--red);background:var(--red-lt)}
+.error-msg{color:var(--red);font-size:10px;margin-top:3px;font-weight:500}
+
+/* SHIPPING MODE */
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mc{
+  border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;
+  cursor:pointer;background:var(--surface);transition:all .16s;
+  display:flex;align-items:center;gap:11px;
+}
+.mc:hover{border-color:var(--blue3);background:var(--blue-lt)}
+.mc.sel{border-color:var(--blue3);background:var(--blue-lt);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.mc input[type=radio]{accent-color:var(--blue3);width:15px;height:15px;cursor:pointer;flex-shrink:0}
+.mc-name{font-size:13.5px;font-weight:600;color:var(--blue)}
+.mc-rate{font-size:11px;color:var(--blue2);font-family:var(--mono);margin-top:2px}
+.mc-transit{font-size:11px;color:var(--red);font-weight:500;margin-top:2px}
+
+/* SUMMARY */
+.summ{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.summ-r{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;border-bottom:1px dashed var(--border);font-size:13.5px;
+}
+.summ-r:last-child{border-bottom:none}
+.summ-r.grand{background:var(--blue);padding:13px 16px}
+.summ-r.grand .sk{color:rgba(255,255,255,.82);font-weight:600;font-size:14.5px}
+.summ-r.grand .sv{color:#fff;font-family:var(--mono);font-size:19px;font-weight:700}
+.sk{color:var(--muted);font-weight:500}
+.sv{font-family:var(--mono);font-weight:600;color:var(--text)}
+
+/* POLICY */
+.policy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pi{display:flex;align-items:flex-start;gap:9px;background:var(--blue-lllt);border:1px solid var(--blue-lt);border-radius:8px;padding:10px 12px}
+.pi-n{width:20px;height:20px;min-width:20px;border-radius:50%;background:var(--blue2);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.pi-t{font-size:12px;color:var(--blue);line-height:1.55}
+
+/* FOOTER */
+.cftr{background:var(--blue);text-align:center;font-size:11px;color:rgba(255,255,255,.45);padding:10px;letter-spacing:.04em}
+
+/* OVERLAY */
+#overlay{display:none;position:fixed;inset:0;background:rgba(11,45,107,.5);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#overlay.show{display:flex}
+.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay p{color:#fff;font-size:14px;font-weight:500}
+
+/* ═══════════════════════════════════════════
+   PRINT / PDF STYLES
+═══════════════════════════════════════════ */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:#fff!important;margin:0;padding:0}
+  #toolbar,#overlay,.btn,.no-print{display:none!important}
+  #shell{max-width:100%!important;margin:0!important;padding:0!important}
+  .card{border:none!important;box-shadow:none!important;border-radius:0!important}
+  .cbody{padding:16px 20px!important}
+  .form-only{display:none!important}
+  .print-section{display:block!important}
+  #print-view{display:block!important}
+  #form-view{display:none!important}
+  @page{size:A4 portrait;margin:0}
+}
+
+/* ═══════════════════════════════════════════
+   PRINT VIEW (hidden on screen, shown on print)
+═══════════════════════════════════════════ */
+#print-view{display:none}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media(max-width:560px){
+  .chdr-inner{flex-direction:column}
+  .chdr-right{text-align:left}
+  .g2,.g3,.g4,.mode-row,.policy-grid{grid-template-columns:1fr}
+  .cbody{padding:18px 14px}
+  #toolbar{padding:10px 14px;justify-content:center}
+  .t-actions{order:-1;width:100%;justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<div id="overlay"><div class="spin"></div><p>Generating PDF…</p></div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="t-brand"><div class="t-brand-dot"></div>SBN <span>Logistics</span></div>
+  <div class="t-actions">
+    <button class="btn btn-new" onclick="newQuotation()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New
+    </button>
+    <button class="btn btn-print" onclick="downloadPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      PDF
+    </button>
+    <button class="btn btn-whatsapp" onclick="shareWhatsApp()" id="whatsapp-btn" style="display:none">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      WhatsApp
+    </button>
+  </div>
+</div>
+
+<!-- MAIN SHELL -->
+<div id="shell">
+<div class="card">
+
+  <!-- HEADER -->
+  <div class="chdr">
+    <div class="chdr-inner">
+      <div>
+        <div class="chdr-tag">Shipping Quotation</div>
+        <div class="chdr-name">Sidharth <em>Bright</em> Networks</div>
+        <div class="chdr-contact">
+          Supaul, Bihar – 852131<br/>
+          +91 95087 87946
+        </div>
+      </div>
+      <div class="chdr-right">
+        <div class="chdr-qlbl">Quotation No.</div>
+        <div class="chdr-qno" id="fh-qno">SBN-20260505-001</div>
+        <div class="chdr-date" id="fh-date"></div>
+        <div class="chdr-clock" id="fh-clock"></div>
+      </div>
+    </div>
+  </div>
+  <div class="red-strip"></div>
+
+  <!-- FORM VIEW -->
+  <div id="form-view">
+  <div class="cbody">
+
+    <!-- Customer -->
+    <div class="sec">
+      <div class="sec-ttl">Customer Details</div>
+      <div class="g2">
+        <div class="fl"><label>Customer Name</label><input id="f-cname" placeholder="Full name"/></div>
+        <div class="fl"><label>Mobile Number</label><input id="f-cmob" placeholder="+91 XXXXX XXXXX" type="tel" maxlength="13"/></div>
+      </div>
+    </div>
+
+    <!-- Shipment -->
+    <div class="sec">
+      <div class="sec-ttl">Shipment Details</div>
+      <div class="g2">
+        <div class="fl"><label>Origin Pincode</label><input id="f-from" placeholder="6-digit" type="number" maxlength="6"/></div>
+        <div class="fl"><label>Destination Pincode</label><input id="f-to" placeholder="6-digit" type="number" maxlength="6"/></div>
+      </div>
+      <div class="g4">
+        <div class="fl"><label>Weight (kg)</label><input id="f-wt" type="number" placeholder="0.00" step="0.1" min="0"/></div>
+        <div class="fl"><label>Length (cm)</label><input id="f-len" type="number" placeholder="0" step="0.1" min="0"/></div>
+        <div class="fl"><label>Breadth (cm)</label><input id="f-bre" type="number" placeholder="0" step="0.1" min="0"/></div>
+        <div class="fl"><label>Height (cm)</label><input id="f-hgt" type="number" placeholder="0" step="0.1" min="0" oninput="calcTotal()"/></div>
+      </div>
+      <div id="dim-error" class="error-msg" style="display:none">Please enter package dimensions</div>
+    </div>
+
+    <!-- Mode -->
+    <div class="sec">
+      <div class="sec-ttl">Shipping Mode</div>
+      <div class="mode-row">
+        <label class="mc sel" id="mc-s" onclick="setMode('Surface',this)">
+          <input type="radio" name="smode" value="Surface" checked/>
+          <div>
+            <div class="mc-name">🚛 Surface</div>
+            <div class="mc-transit">5–7 days</div>
+          </div>
+        </label>
+        <label class="mc" id="mc-a" onclick="setMode('Air',this)">
+          <input type="radio" name="smode" value="Air"/>
+          <div>
+            <div class="mc-name">✈️ Air</div>
+            <div class="mc-transit">2–3 days</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="sec">
+      <div class="sec-ttl">Pricing</div>
+      <div class="g2">
+        <div class="fl">
+          <label>Final Weight (kg)</label>
+          <input id="f-weight" type="text" readonly/>
+          <div class="hint" id="f-weight-hint">Enter all details to calculate</div>
+        </div>
+        <div class="fl">
+          <label>Freight Charge</label>
+          <input id="f-freight" type="text" readonly/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="sec">
+      <div class="sec-ttl">Fare Summary</div>
+      <div class="summ">
+        <div class="summ-r">
+          <span class="sk">Freight Charge</span>
+          <span class="sv" id="s-freight">₹0.00</span>
+        </div>
+        <div class="summ-r grand">
+          <span class="sk">Total Payable</span>
+          <span class="sv" id="s-total">₹0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Policy -->
+    <div class="sec">
+      <div class="sec-ttl">Shipping Policy</div>
+      <div class="policy-grid">
+        <div class="pi"><div class="pi-n">1</div><div class="pi-t">Parcel photo mandatory before dispatch.</div></div>
+        <div class="pi"><div class="pi-n">2</div><div class="pi-t">Proper packaging required by sender.</div></div>
+        <div class="pi"><div class="pi-n">3</div><div class="pi-t">No restricted or hazardous items allowed.</div></div>
+        <div class="pi"><div class="pi-n">4</div><div class="pi-t">Correct destination PIN code mandatory.</div></div>
+        <div class="pi"><div class="pi-n">5</div><div class="pi-t">No liability for damage due to poor packing.</div></div>
+        <div class="pi"><div class="pi-n">6</div><div class="pi-t">Transit delays due to weather/strikes not covered.</div></div>
+      </div>
+    </div>
+
+  </div>
+  </div><!-- /form-view -->
+
+  <div class="cftr">Sidharth Bright Networks &nbsp;|&nbsp; Supaul, Bihar 852131 &nbsp;|&nbsp; +91 95087 87946</div>
+</div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function pad(n){return String(n).padStart(2,'0')}
+function dateStr(){var d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())}
+function todayLong(){
+  var d=new Date();
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return pad(d.getDate())+' '+M[d.getMonth()]+' '+d.getFullYear();
+}
+function todayShort(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
+function fmtRs(n){return '₹'+parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function randStr(len=6){return Math.random().toString(36).substr(2,len).toUpperCase()}
+
+/* ══════════════════════════════════════════
+   QUOTATION NUMBER
+══════════════════════════════════════════ */
+var qCount=parseInt(sessionStorage.getItem('sbn_q')||'1');
+function getQNo(){return 'SBN-'+dateStr()+'-'+randStr(3)+String(qCount).padStart(3,'0')}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+function init(){
+  var q=getQNo();
+  document.getElementById('fh-qno').textContent=q;
+  document.getElementById('fh-date').textContent=todayLong();
+  setTransit('Surface');
+  calcTotal();
+}
+
+/* ══════════════════════════════════════════
+   LIVE CLOCK
+══════════════════════════════════════════ */
+function tick(){
+  var d=new Date();
+  document.getElementById('fh-clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+tick();setInterval(tick,1000);
+
+/* ══════════════════════════════════════════
+   MODE
+══════════════════════════════════════════ */
+var curMode='Surface';
+function setMode(m,el){
+  curMode=m;
+  document.querySelectorAll('.mc').forEach(function(c){c.classList.remove('sel')});
+  el.classList.add('sel');
+  setTransit(m);
+  calcTotal();
+}
+function setTransit(m){
+  document.getElementById('f-transit')?.value || (m==='Air'?'2–3 days':'5–7 days');
+}
+
+/* ══════════════════════════════════════════
+   WEIGHT & PRICING LOGIC (HIDDEN)
+══════════════════════════════════════════ */
+function calcFreight(wt,mode){
+  if(!wt||wt<=0)return 0;
+  if(wt<=2)return 249;
+  return mode==='Air'?wt*150:wt*100;
+}
+
+function calcTotal(){
+  var wt=parseFloat(document.getElementById('f-wt').value)||0;
+  var len=parseFloat(document.getElementById('f-len').value)||0;
+  var bre=parseFloat(document.getElementById('f-bre').value)||0;
+  var hgt=parseFloat(document.getElementById('f-hgt').value)||0;
+  
+  // Validation
+  var dimError=document.getElementById('dim-error');
+  var fields=[document.getElementById('f-len'),document.getElementById('f-bre'),document.getElementById('f-hgt')];
+  var hasError=false;
+  
+  fields.forEach(function(f){
+    if(!f.value||parseFloat(f.value)<=0){
+      f.parentElement.classList.add('error');
+      hasError=true;
+    }else{
+      f.parentElement.classList.remove('error');
+    }
+  });
+  
+  if(hasError){
+    dimError.style.display='block';
+    document.getElementById('f-weight').value='';
+    document.getElementById('f-freight').value='';
+    document.getElementById('s-freight').textContent='₹0.00';
+    document.getElementById('s-total').textContent='₹0.00';
+    document.getElementById('whatsapp-btn').style.display='none';
+    return;
+  }
+  
+  dimError.style.display='none';
+  fields.forEach(function(f){f.parentElement.classList.remove('error')});
+  
+  // Volumetric weight calculation (HIDDEN)
+  var volWt=(len*bre*hgt)/5000;
+  var finalWt=Math.max(wt,volWt);
+  
+  // Pricing
+  var freight=calcFreight(finalWt,curMode);
+  
+  // Update displays
+  document.getElementById('f-weight').value=finalWt.toFixed(2)+' kg';
+  document.getElementById('f-freight').value=freight>0?fmtRs(freight):'';
+  document.getElementById('s-freight').textContent=fmtRs(freight);
+  document.getElementById('s-total').textContent=fmtRs(freight);
+  
+  var hint=document.getElementById('f-weight-hint');
+  if(finalWt===wt){
+    hint.textContent='Actual weight used';
+  }else{
+    hint.textContent='Volumetric weight applied';
+  }
+  
+  // Show WhatsApp button
+  if(document.getElementById('f-cname').value && document.getElementById('f-cmob').value){
+    document.getElementById('whatsapp-btn').style.display='inline-flex';
+  }
+}
+
+/* ══════════════════════════════════════════
+   NEW QUOTATION
+══════════════════════════════════════════ */
+function newQuotation(){
+  if(!confirm('Clear form and start a new quotation?'))return;
+  qCount++;sessionStorage.setItem('sbn_q',qCount);
+  init();
+  ['f-cname','f-cmob','f-from','f-to','f-wt','f-len','f-bre','f-hgt'].forEach(function(id){document.getElementById(id).value=''});
+  document.querySelectorAll('.fl').forEach(function(f){f.classList.remove('error')});
+  document.getElementById('dim-error').style.display='none';
+  document.querySelectorAll('.mc').forEach(function(c){c.classList.remove('sel')});
+  document.getElementById('mc-s').classList.add('sel');
+  document.querySelector('input[value="Surface"]').checked=true;
+  curMode='Surface';
+  document.getElementById('whatsapp-btn').style.display='none';
+}
+
+/* ══════════════════════════════════════════
+   WHATSAPP SHARING
+══════════════════════════════════════════ */
+function shareWhatsApp(){
+  var cname=document.getElementById('f-cname').value;
+  var cmob=document.getElementById('f-cmob').value.replace(/[^0-9]/g,'');
+  var qno=document.getElementById('fh-qno').textContent;
+  var from=document.getElementById('f-from').value;
+  var to=document.getElementById('f-to').value;
+  var wt=document.getElementById('f-weight').value;
+  var freight=document.getElementById('f-freight').value;
+  var mode=curMode;
+  var transit=mode==='Air'?'2–3 days':'5–7 days';
+  
+  var msg=`👋 Hello ${cname},
+
+📋 *SBN LOGISTICS QUOTATION*
+Quotation No: ${qno}
+
+📍 From: ${from}
+📍 To: ${to}
+⚖️ Weight: ${wt}
+🚚 Mode: ${mode} (${transit})
+💰 Freight: ${freight}
+
+✅ *Sidharth Bright Networks*
+Supaul, Bihar - 852131
+📞 +91 95087 87946
+
+*Book now!*`;
+  
+  var whatsappUrl=`https://wa.me/91${cmob}?text=${encodeURIComponent(msg)}`;
+  window.open(whatsappUrl,'_blank');
+}
+
+/* ══════════════════════════════════════════
+   PDF GENERATION
+══════════════════════════════════════════ */
+function downloadPDF(){
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(buildPDF,80);
+}
+
+function buildPDF(){
+  try{
+    var {jsPDF}=window.jspdf;
+    var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    var W=210,H=297;
+    var lm=15,rm=15,cw=W-lm-rm;
+    var footerH=13;
+    var bottomLimit=H-footerH-8;
+    var y=0;
+
+    /* — read values — */
+    var qno=document.getElementById('fh-qno').textContent;
+    var cname=document.getElementById('f-cname').value||'—';
+    var cmob=document.getElementById('f-cmob').value||'—';
+    var ffrom=document.getElementById('f-from').value||'—';
+    var fto=document.getElementById('f-to').value||'—';
+    var fwt=document.getElementById('f-weight').value||'—';
+    var ffreight=document.getElementById('s-total').textContent;
+
+    /* ── FOOTER ── */
+    function drawFooter(){
+      doc.setFillColor(11,45,107);
+      doc.rect(0,H-footerH,W,footerH,'F');
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+      doc.setTextColor(160,185,230);
+      doc.text('Sidharth Bright Networks  |  Supaul, Bihar - 852131  |  +91 95087 87946  |  Computer Generated Quotation',W/2,H-4.8,{align:'center'});
+    }
+
+    /* ── PAGE BREAK ── */
+    function checkPage(need){
+      if(y+need>bottomLimit){
+        drawFooter();
+        doc.addPage();
+        doc.setFillColor(11,45,107);doc.rect(0,0,W,10,'F');
+        doc.setFillColor(192,23,40);doc.rect(0,10,W,2,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(8);
+        doc.setTextColor(200,215,245);
+        doc.text('Sidharth Bright Networks — Quotation (contd.)  '+qno,lm,7);
+        y=18;
+      }
+    }
+
+    /* ── SECTION TITLE ── */
+    function secTitle(txt){
+      checkPage(16);
+      doc.setFillColor(232,240,254);
+      doc.rect(lm,y,cw,7.5,'F');
+      doc.setDrawColor(37,99,235);doc.setLineWidth(0.8);
+      doc.line(lm,y,lm,y+7.5);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);
+      doc.setTextColor(24,71,168);
+      doc.text(txt.toUpperCase(),lm+5,y+5.1);
+      y+=11;
+    }
+
+    /* ── FIELD PAIR ── */
+    function fieldPair(label,value,x,w){
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+      doc.setTextColor(100,116,139);
+      doc.text(label.toUpperCase(),x,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(10.5);
+      doc.setTextColor(20,24,41);
+      doc.text(String(value),x,y+5.5);
+      doc.setDrawColor(208,218,240);doc.setLineWidth(0.3);
+      doc.line(x,y+7.5,x+w,y+7.5);
+    }
+
+    /* ═════════════════════════════════
+       PAGE 1 — HEADER BAND
+    ═════════════════════════════════ */
+    doc.setFillColor(11,45,107);
+    doc.rect(0,0,W,44,'F');
+
+    doc.setFillColor(24,61,138);
+    doc.circle(W-10,10,28,'F');
+    doc.setFillColor(30,72,155);
+    doc.circle(W+5,38,20,'F');
+
+    doc.setFont('helvetica','bold');doc.setFontSize(21);
+    doc.setTextColor(255,255,255);
+    doc.text('Sidharth Bright Networks',lm,17);
+
+    doc.setFont('helvetica','normal');doc.setFontSize(8);
+    doc.setTextColor(170,200,245);
+    doc.text('LOGISTICS & COURIER SERVICES',lm,22.5);
+
+    doc.setFontSize(9);doc.setTextColor(195,215,248);
+    doc.text('Supaul, Bihar - 852131',lm,29);
+    doc.text('Contact: +91 95087 87946',lm,34.5);
+
+    doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.setTextColor(140,175,230);
+    doc.text('SHIPPING QUOTATION',W-rm,12,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setFontSize(13.5);
+    doc.setTextColor(255,255,255);
+    doc.text(qno,W-rm,21,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9);
+    doc.setTextColor(195,215,248);
+    doc.text('Date: '+todayShort(),W-rm,28,{align:'right'});
+    doc.text('Mode: '+curMode+' Shipping',W-rm,34.5,{align:'right'});
+
+    doc.setFillColor(192,23,40);doc.rect(0,44,W,3.5,'F');
+    y=54;
+
+    /* ═════════════════════════════════
+       CUSTOMER & SHIPMENT
+    ═════════════════════════════════ */
+    secTitle('Customer & Shipment Details');
+    var col1=lm,col2=lm+cw/2+3,hw=cw/2-3;
+
+    checkPage(14);
+    fieldPair('Customer Name',cname,col1,hw);
+    fieldPair('Mobile Number',cmob,col2,hw);
+    y+=14;
+    checkPage(14);
+    fieldPair('Origin Pincode',ffrom,col1,hw);
+    fieldPair('Destination Pincode',fto,col2,hw);
+    y+=14;
+    checkPage(14);
+    fieldPair('Final Weight',fwt,col1,hw);
+    fieldPair('Shipping Mode',curMode,col2,hw);
+    y+=18;
+
+    /* ═════════════════════════════════
+       CHARGES TABLE
+    ═════════════════════════════════ */
+    secTitle('Charges & Payment');
+    checkPage(10);
+
+    doc.setFillColor(11,45,107);
+    doc.rect(lm,y,cw,9,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);
+    doc.setTextColor(255,255,255);
+    doc.text('DESCRIPTION',lm+4,y+6);
+    doc.text('AMOUNT',W-rm-4,y+6,{align:'right'});
+    y+=9;
+
+    // Freight row
+    doc.setFillColor(248,252,255);
+    doc.rect(lm,y,cw,9.5,'F');
+    doc.setDrawColor(208,218,240);doc.setLineWidth(0.2);
+    doc.rect(lm,y,cw,9.5,'S');
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+    doc.setTextColor(22,24,42);
+    doc.text('Freight Charge ('+curMode+')',lm+4,y+9.5/2+1.8);
+    doc.text(ffreight,W-rm-4,y+9.5/2+1.8,{align:'right'});
+    y+=9.5;
+
+    // Grand total
+    checkPage(15);
+    doc.setFillColor(11,45,107);
+    doc.rect(lm,y,cw,14,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);
+    doc.setTextColor(255,255,255);
+    doc.text('TOTAL PAYABLE AMOUNT',lm+4,y+9.5);
+    doc.setFontSize(14);
+    doc.text(ffreight,W-rm-4,y+9.5,{align:'right'});
+    y+=14;
+    y+=11;
+
+    /* ═════════════════════════════════
+       POLICY
+    ═════════════════════════════════ */
+    secTitle('Terms & Conditions');
+
+    var policies=[
+      ['1','Parcel Photo Mandatory','A photo of the parcel must be taken at the time of dispatch for dispute resolution.'],
+      ['2','Proper Packaging','Proper packaging required by sender. We are not liable for damage due to poor packing.'],
+      ['3','No Restricted Items','Prohibited, hazardous, flammable, or illegal items are strictly not permitted.'],
+      ['4','Correct Pincode Required','Sender must provide correct destination PIN code. Delivery failure due to wrong pincode not covered.'],
+      ['5','Transit Delays','Not liable for delays caused by weather, strikes, government restrictions or force majeure.'],
+    ];
+
+    policies.forEach(function(p){
+      doc.setFontSize(8);
+      var lines=doc.splitTextToSize(p[2],cw-13);
+      var itemH=10+lines.length*3.9+4;
+      checkPage(itemH);
+
+      doc.setFillColor(240,245,255);
+      doc.roundedRect(lm,y,cw,itemH-2,2,2,'F');
+      doc.setDrawColor(210,225,250);doc.setLineWidth(0.3);
+      doc.roundedRect(lm,y,cw,itemH-2,2,2,'S');
+
+      doc.setFillColor(24,71,168);
+      doc.circle(lm+5,y+5,3.5,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+      doc.setTextColor(255,255,255);
+      doc.text(p[0],lm+5,y+6.2,{align:'center'});
+
+      doc.setFont('helvetica','bold');doc.setFontSize(9);
+      doc.setTextColor(11,45,107);
+      doc.text(p[1],lm+12,y+5.5);
+
+      doc.setFont('helvetica','normal');doc.setFontSize(8);
+      doc.setTextColor(55,70,95);
+      doc.text(lines,lm+12,y+9.5);
+      y+=itemH;
+    });
+
+    y+=5;
+
+    /* ═════════════════════════════════
+       SIGNATURE
+    ═════════════════════════════════ */
+    checkPage(42);
+    var sigRX=W-rm-58,sigLX=lm;
+
+    doc.setDrawColor(170,185,215);doc.setLineWidth(0.6);
+    doc.line(sigLX,y+22,sigLX+58,y+22);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.setTextColor(95,112,140);
+    doc.text("CUSTOMER'S SIGNATURE",sigLX+29,y+26.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+    doc.setTextColor(130,145,170);
+    doc.text('(Acceptance of Terms)',sigLX+29,y+31,{align:'center'});
+
+    doc.setDrawColor(170,185,215);
+    doc.line(sigRX,y+22,W-rm,y+22);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.setTextColor(95,112,140);
+    doc.text('AUTHORIZED SIGNATORY',sigRX+29,y+26.5,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.setTextColor(11,45,107);
+    doc.text('Sidharth Bright Networks',sigRX+29,y+31,{align:'center'});
+
+    drawFooter();
+    doc.save('SBN-Quotation-'+qno+'.pdf');
+
+  }catch(e){
+    alert('PDF Error: '+e.message);console.error(e);
+  }finally{
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+// Auto calculate on input change
+['f-wt','f-len','f-bre','f-hgt','f-cname','f-cmob'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',calcTotal);
+});
+
+init();
+</script>
+</body>
+</html>
