@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shipping Quotation – Sidharth Bright Networks</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+  --navy:#08204a;--blue:#0b2d6b;--blue2:#1847a8;--blue3:#2563eb;--blue4:#3b82f6;
+  --blue-lt:#e8f0fe;--blue-lllt:#f0f5ff;--red:#c01728;--red2:#dc2626;--red-lt:#fde8ea;
+  --border:#d0daf0;--border2:#bfcbea;--surface:#f2f6fc;--surface2:#eaf0fb;
+  --text:#0f1626;--muted:#5c6a8a;--white:#ffffff;--green:#16a34a;--green-lt:#f0fdf4;
+  --shadow:0 8px 32px rgba(11,45,107,.13);--shadow-lg:0 16px 48px rgba(11,45,107,.18);
+  --radius:14px;--radius-sm:9px;
+  --font:'Manrope',sans-serif;--mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);font-size:13.5px;color:var(--text);background:linear-gradient(135deg,#e8eff8 0%,#f2f6fc 50%,#e4ecf7 100%);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,99,235,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+
+#toolbar{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1.5px solid rgba(208,218,240,.8);padding:11px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:300;box-shadow:0 2px 20px rgba(11,45,107,.1);flex-wrap:wrap;gap:10px}
+.t-brand{font-family:var(--display);font-size:15px;font-weight:800;color:var(--blue);letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.t-brand-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(11,45,107,.3);flex-shrink:0}
+.t-brand-icon svg{width:16px;height:16px;fill:#fff}
+.t-brand span{color:var(--red)}
+.t-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{font-family:var(--font);font-size:12px;font-weight:700;padding:9px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;transition:all .2s cubic-bezier(.34,1.56,.64,1);letter-spacing:.01em;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(.97)!important}
+.btn-new{background:var(--white);color:var(--blue);border:1.5px solid var(--border);box-shadow:0 2px 8px rgba(11,45,107,.06)}
+.btn-new:hover{background:var(--blue-lt);border-color:var(--blue3);color:var(--blue2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,.18)}
+.btn-print{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;box-shadow:0 4px 14px rgba(11,45,107,.32)}
+.btn-print:hover{background:linear-gradient(135deg,var(--blue2) 0%,var(--blue3) 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,45,107,.4)}
+.btn-whatsapp{background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.btn-whatsapp:hover{background:linear-gradient(135deg,#15803d 0%,#166534 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,.4)}
+.btn-admin{background:var(--white);color:var(--navy);border:1.5px solid var(--border);box-shadow:0 2px 8px rgba(11,45,107,.06)}
+.btn-admin:hover{background:var(--red-lt);border-color:var(--red);color:var(--red);transform:translateY(-1px);box-shadow:0 4px 16px rgba(192,23,40,.15)}
+.btn-admin.active{background:linear-gradient(135deg,var(--red) 0%,#e11d48 100%);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(192,23,40,.35)}
+.btn-wdisc{background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);color:#fff;border:none;box-shadow:0 4px 14px rgba(11,45,107,.32);display:none}
+.btn-wdisc:hover{background:linear-gradient(135deg,#2563eb 0%,#1847a8 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,45,107,.4)}
+.btn-wdisc.show{display:inline-flex;animation:wdReveal .4s cubic-bezier(.22,1,.36,1) both}
+.btn-invoice{background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);color:#fff;border:none;box-shadow:0 4px 14px rgba(11,45,107,.32);display:none}
+.btn-invoice:hover{background:linear-gradient(135deg,#2563eb 0%,#1847a8 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,45,107,.4)}
+.btn-invoice.show{display:inline-flex;animation:wdReveal .4s cubic-bezier(.22,1,.36,1) both}
+@keyframes wdReveal{from{opacity:0;transform:scale(.85) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.btn-book{background:linear-gradient(135deg,var(--red) 0%,#e11d48 100%);color:#fff;box-shadow:0 4px 14px rgba(192,23,40,.35);font-size:13px;padding:12px 28px}
+.btn-book:hover{background:linear-gradient(135deg,#e11d48 0%,#be123c 100%);transform:translateY(-2px);box-shadow:0 8px 24px rgba(192,23,40,.45)}
+.btn-book svg{width:16px;height:16px}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+
+/* Admin trigger – invisible tap zone top-right corner of brand */
+#admin-tap{position:absolute;right:0;top:0;width:28px;height:28px;opacity:0;cursor:default;z-index:500;-webkit-tap-highlight-color:transparent}
+
+#shell{max-width:720px;margin:32px auto 80px;padding:0 16px;position:relative;z-index:1}
+
+.card{background:var(--white);border-radius:20px;border:1.5px solid rgba(208,218,240,.7);overflow:hidden;box-shadow:var(--shadow-lg);animation:cardIn .55s cubic-bezier(.22,1,.36,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.chdr{background:linear-gradient(130deg,#061d42 0%,var(--blue) 45%,#1a3d8a 75%,var(--blue2) 100%);padding:32px 36px 28px;position:relative;overflow:hidden}
+.chdr::before{content:'';position:absolute;right:-70px;top:-70px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18) 0%,transparent 70%);animation:orbPulse 6s ease-in-out infinite}
+.chdr::after{content:'';position:absolute;right:30px;bottom:-50px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(192,23,40,.15) 0%,transparent 70%);animation:orbPulse 6s ease-in-out infinite reverse}
+@keyframes orbPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1}}
+.chdr-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
+.chdr-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.chdr-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px;backdrop-filter:blur(4px)}
+.chdr-badge-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.chdr-name{font-family:var(--display);font-size:24px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.1;margin-bottom:5px}
+.chdr-name em{color:#fca5a5;font-style:normal;text-shadow:0 0 20px rgba(252,165,165,.4)}
+.chdr-contact{font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.9;margin-top:8px}
+.chdr-contact span{color:rgba(255,255,255,.85)}
+.chdr-right{text-align:right;flex-shrink:0}
+.chdr-qlbl{font-size:8.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.chdr-qno{font-family:var(--mono);font-size:13px;font-weight:500;color:#fff;letter-spacing:.06em;margin-bottom:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;display:inline-block}
+.chdr-date{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px}
+.chdr-clock{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em}
+
+/* Admin badge in header */
+.admin-badge{display:none;align-items:center;gap:5px;background:rgba(192,23,40,.25);border:1px solid rgba(255,100,100,.35);border-radius:12px;padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fca5a5;margin-top:8px}
+.admin-badge.show{display:inline-flex}
+.admin-badge-dot{width:5px;height:5px;border-radius:50%;background:#f87171;animation:blink 1.5s ease-in-out infinite}
+
+.red-strip{height:4px;background:linear-gradient(90deg,var(--red),#f43f5e,var(--red));background-size:200% 100%;animation:stripFlow 4s ease-in-out infinite}
+@keyframes stripFlow{0%,100%{background-position:0% 0%}50%{background-position:100% 0%}}
+
+.cbody{padding:32px 34px}
+
+.sec{margin-bottom:32px;animation:secIn .4s cubic-bezier(.22,1,.36,1) both}
+.sec:nth-child(1){animation-delay:.05s}
+.sec:nth-child(2){animation-delay:.1s}
+.sec:nth-child(3){animation-delay:.15s}
+.sec:nth-child(4){animation-delay:.2s}
+.sec:nth-child(5){animation-delay:.25s}
+.sec:nth-child(6){animation-delay:.3s}
+@keyframes secIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.sec-ttl{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue2);padding-bottom:12px;margin-bottom:20px;display:flex;align-items:center;gap:8px;border-bottom:1.5px solid transparent;border-image:linear-gradient(90deg,var(--blue-lt),transparent) 1}
+.sec-ttl-dot{width:18px;height:18px;border-radius:5px;min-width:18px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);display:flex;align-items:center;justify-content:center}
+.sec-ttl-dot svg{width:9px;height:9px;fill:#fff}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:18px}
+
+.fl{display:flex;flex-direction:column;gap:8px}
+.fl label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:2px}
+.fl input,.fl select,.fl textarea{font-family:var(--font);font-size:13.5px;padding:13px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);width:100%;outline:none;transition:border-color .18s,background .18s,box-shadow .18s,transform .15s}
+.fl textarea{resize:vertical;min-height:100px;line-height:1.6}
+.fl input:hover,.fl select:hover,.fl textarea:hover{border-color:var(--border2);background:#edf2fb}
+.fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.1);transform:translateY(-1px)}
+.fl input[readonly]{background:linear-gradient(135deg,#eef2fb,#e8f0fe);color:var(--blue2);cursor:default;font-family:var(--mono);font-size:13px;font-weight:500;border-color:#c8d6f0;padding:13px 16px}
+.fl .hint{font-size:10px;color:var(--blue2);font-weight:700;background:var(--blue-lt);padding:4px 10px;border-radius:5px;margin-top:2px;display:inline-flex;align-items:center;gap:5px;border-left:2px solid var(--blue3)}
+.fl.error input,.fl.error textarea,.fl.error select{border-color:var(--red);background:var(--red-lt)}
+.error-msg{color:var(--red);font-size:10px;margin-top:4px;font-weight:600;display:flex;align-items:center;gap:5px}
+
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.mc{border:1.5px solid var(--border);border-radius:12px;padding:18px 22px;cursor:pointer;background:var(--surface);transition:all .22s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:13px;position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(37,99,235,.05),transparent);opacity:0;transition:opacity .2s}
+.mc:hover{border-color:var(--blue3);background:#fff;transform:translateY(-2px);box-shadow:0 4px 16px rgba(37,99,235,.12)}
+.mc:hover::before{opacity:1}
+.mc.sel{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.12),0 4px 16px rgba(37,99,235,.12);transform:translateY(-2px)}
+.mc.sel::before{opacity:1}
+.mc input[type=radio]{accent-color:var(--blue3);width:16px;height:16px;cursor:pointer;flex-shrink:0}
+.mc-name{font-size:14px;font-weight:700;color:var(--blue);font-family:var(--display)}
+.mc-transit{font-size:10.5px;color:var(--red2);font-weight:700;margin-top:3px;display:flex;align-items:center;gap:4px}
+.mc-transit::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--red2);flex-shrink:0}
+
+.summ{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.summ-r{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px dashed var(--border);font-size:13.5px;transition:background .2s}
+.summ-r:hover{background:var(--blue-lllt)}
+.summ-r:last-child{border-bottom:none}
+.summ-r.grand{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);padding:18px 20px}
+.summ-r.grand:hover{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%)}
+.summ-r.grand .sk{color:rgba(255,255,255,.82);font-weight:700;font-size:14px}
+.summ-r.grand .sv{color:#fff;font-family:var(--mono);font-size:20px;font-weight:500;text-shadow:0 0 20px rgba(255,255,255,.3)}
+.sk{color:var(--muted);font-weight:500}
+.sv{font-family:var(--mono);font-weight:600;color:var(--text)}
+
+@keyframes totalPop{0%{transform:scale(1)}40%{transform:scale(1.08)}70%{transform:scale(.97)}100%{transform:scale(1)}}
+.sv.pop{animation:totalPop .4s cubic-bezier(.34,1.56,.64,1)}
+
+
+/* Admin Discount Section */
+#admin-section{display:none;margin-bottom:0;overflow:hidden}
+#admin-section.show{display:block;animation:adminReveal .45s cubic-bezier(.22,1,.36,1) both}
+@keyframes adminReveal{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+.admin-panel{background:linear-gradient(135deg,#fdf2f2 0%,#fef9f9 100%);border:1.5px solid rgba(192,23,40,.25);border-radius:12px;padding:22px 24px;margin-top:0;margin-bottom:20px;position:relative;overflow:hidden}
+.admin-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),#f43f5e,var(--red))}
+.admin-panel-ttl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--red);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.admin-panel-ttl svg{width:12px;height:12px}
+.discount-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:end}
+.discount-type-toggle{display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.discount-type-toggle button{flex:1;padding:9px 12px;border:none;background:transparent;font-family:var(--font);font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s}
+.discount-type-toggle button.active{background:var(--red);color:#fff;box-shadow:0 2px 8px rgba(192,23,40,.3)}
+.admin-result{background:rgba(192,23,40,.06);border:1px solid rgba(192,23,40,.15);border-radius:8px;padding:8px 12px;font-size:11.5px;color:var(--red);font-weight:700;margin-top:10px;display:flex;align-items:center;gap:7px}
+.admin-result svg{width:13px;height:13px;flex-shrink:0}
+
+/* Inline Notice Banner */
+.notice-banner{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 50%,#fde68a 100%);border:2px solid #f59e0b;border-left:5px solid #d97706;border-radius:14px;padding:18px 22px;margin-top:18px;box-shadow:0 4px 18px rgba(245,158,11,.18),0 1px 4px rgba(245,158,11,.1);position:relative;overflow:hidden}
+.notice-banner::before{content:'';position:absolute;right:-18px;top:-18px;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(251,191,36,.25) 0%,transparent 70%);pointer-events:none}
+.notice-banner-icon{width:38px;height:38px;min-width:38px;border-radius:10px;background:linear-gradient(135deg,#d97706,#f59e0b);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(217,119,6,.35);flex-shrink:0}
+.notice-banner-icon svg{width:20px;height:20px;fill:#fff}
+.notice-banner-body{flex:1}
+.notice-banner-title{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#92400e;margin-bottom:4px}
+.notice-banner-msg{font-size:12.5px;color:#78350f;line-height:1.6;font-weight:500}
+.notice-banner-msg strong{color:#7c2d12;font-weight:700}
+
+/* WhatsApp modal */
+#wa-modal{display:none;position:fixed;inset:0;background:rgba(6,29,66,.6);backdrop-filter:blur(10px);z-index:999;align-items:center;justify-content:center;padding:20px}
+#wa-modal.show{display:flex;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.wa-box{background:#fff;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(11,45,107,.3);overflow:hidden;animation:slideUp .3s cubic-bezier(.22,1,.36,1) both}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.wa-box-hdr{background:linear-gradient(135deg,#16a34a,#15803d);padding:20px 24px;display:flex;align-items:center;gap:12px}
+.wa-box-hdr svg{width:28px;height:28px;fill:#fff;flex-shrink:0}
+.wa-box-hdr-text{color:#fff}
+.wa-box-hdr-text h3{font-family:var(--display);font-size:16px;font-weight:700}
+.wa-box-hdr-text p{font-size:11px;opacity:.75;margin-top:2px}
+.wa-box-body{padding:20px 24px}
+.wa-preview{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:16px;font-size:12px;line-height:1.75;white-space:pre-line;color:#1a3a1a;font-family:var(--mono);max-height:260px;overflow-y:auto;margin-bottom:16px;word-break:break-word}
+.wa-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wa-btn{padding:12px;border:none;border-radius:10px;font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.wa-btn-copy{background:var(--surface);color:var(--blue);border:1.5px solid var(--border)}
+.wa-btn-copy:hover{background:var(--blue-lt);border-color:var(--blue3)}
+.wa-btn-open{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.wa-btn-open:hover{background:linear-gradient(135deg,#15803d,#166534)}
+.wa-close{display:block;width:100%;padding:10px;border:none;background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px}
+.wa-close:hover{color:var(--red)}
+.wa-copied{display:none;align-items:center;gap:5px;color:var(--green);font-size:11px;font-weight:700;justify-content:center;margin-top:8px}
+.wa-copied.show{display:flex}
+
+.book-cta{background:linear-gradient(135deg,var(--green-lt) 0%,#f0fdf4 100%);border:2px dashed var(--green);border-radius:14px;padding:28px 24px;text-align:center;margin-top:24px;position:relative;overflow:hidden;animation:secIn .5s cubic-bezier(.22,1,.36,1) both;animation-delay:.35s}
+.book-cta::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(22,163,74,.08) 0%,transparent 70%)}
+.book-cta-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--green);margin-bottom:6px}
+.book-cta-sub{font-size:12px;color:var(--muted);margin-bottom:18px;max-width:400px;margin-left:auto;margin-right:auto}
+
+.policy-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pi{display:flex;align-items:flex-start;gap:12px;background:linear-gradient(135deg,var(--blue-lllt),#f8faff);border:1px solid var(--blue-lt);border-radius:10px;padding:14px 16px;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.pi:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(37,99,235,.1);border-color:var(--blue3)}
+.pi-n{width:22px;height:22px;min-width:22px;border-radius:6px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;box-shadow:0 2px 6px rgba(11,45,107,.25)}
+.pi-t{font-size:12px;color:#2a3a60;line-height:1.55;font-weight:500}
+
+.disclaimer{margin-top:14px;padding:14px 18px;background:#f8f9fb;border:1px solid #e2e8f0;border-left:3px solid #94a3b8;border-radius:8px;font-size:10.5px;color:#64748b;line-height:1.6;font-style:italic}
+
+.cftr{background:linear-gradient(135deg,var(--blue) 0%,#061d42 100%);text-align:center;font-size:11px;color:rgba(255,255,255,.4);padding:12px;letter-spacing:.06em;font-family:var(--mono)}
+
+#overlay{display:none;position:fixed;inset:0;background:rgba(6,29,66,.65);backdrop-filter:blur(8px);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+#overlay.show{display:flex}
+.spin-wrap{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay p{color:#fff;font-size:14px;font-weight:600;font-family:var(--display);letter-spacing:.05em}
+#overlay span{color:rgba(255,255,255,.5);font-size:11px}
+
+/* Admin code modal */
+#admin-modal{display:none;position:fixed;inset:0;background:rgba(6,29,66,.55);backdrop-filter:blur(10px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+#admin-modal.show{display:flex}
+.am-box{background:#fff;border-radius:18px;max-width:340px;width:100%;padding:28px 24px;box-shadow:0 24px 60px rgba(11,45,107,.35);animation:slideUp .3s cubic-bezier(.22,1,.36,1) both;text-align:center}
+.am-icon{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--blue2));display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.am-icon svg{width:24px;height:24px;fill:#fff}
+.am-box h3{font-family:var(--display);font-size:17px;font-weight:700;color:var(--blue);margin-bottom:6px}
+.am-box p{font-size:12px;color:var(--muted);margin-bottom:20px}
+.am-input{width:100%;padding:13px 16px;border:2px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:18px;text-align:center;letter-spacing:.25em;outline:none;transition:border-color .2s,box-shadow .2s;color:var(--text)}
+.am-input:focus{border-color:var(--blue3);box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.am-input.shake{animation:shake .4s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-5px)}40%,60%{transform:translateX(5px)}}
+.am-err{color:var(--red);font-size:11px;font-weight:600;margin-top:8px;min-height:16px}
+.am-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.am-btn{padding:11px;border:none;border-radius:9px;font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s}
+.am-btn-cancel{background:var(--surface);color:var(--muted);border:1.5px solid var(--border)}
+.am-btn-ok{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  body,html{background:#fff!important;margin:0;padding:0;width:210mm;height:297mm;overflow:hidden}
+  #toolbar,#overlay,.btn,.no-print,#admin-section,#wa-modal,#admin-modal{display:none!important}
+  #shell{max-width:210mm!important;margin:0!important;padding:0!important;position:absolute;top:0;left:0}
+  .card{border:none!important;box-shadow:none!important;border-radius:0!important;width:210mm;min-height:297mm}
+  .cbody{padding:0!important}
+  .book-cta{display:none!important}
+  @page{size:A4 portrait;margin:0;padding:0}
+  .sec{margin-bottom:0!important;page-break-inside:avoid!important}
+  .policy-grid{page-break-inside:avoid!important}
+  .pi{page-break-inside:avoid!important}
+}
+
+@media(max-width:580px){
+  .chdr-inner{flex-direction:column}
+  .chdr-right{text-align:left}
+  .g2,.g3,.g4,.mode-row,.policy-grid,.discount-row{grid-template-columns:1fr}
+  .cbody{padding:24px 20px}
+  #toolbar{padding:12px 16px;justify-content:center}
+  .t-actions{order:-1;width:100%;justify-content:center}
+  .btn-book{width:100%;justify-content:center}
+  .wa-actions{grid-template-columns:1fr}
+  .am-actions{grid-template-columns:1fr}
+  .sec{margin-bottom:24px}
+  .sec-ttl{margin-bottom:16px;padding-bottom:10px}
+  .fl input,.fl select,.fl textarea{padding:12px 14px}
+  .mc{padding:14px 16px}
+  .summ-r{padding:12px 16px}
+  .summ-r.grand{padding:14px 16px}
+  .notice-banner{padding:14px 16px}
+  .book-cta{padding:20px 16px}
+  .admin-panel{padding:16px 18px}
+  .pi{padding:12px 14px}
+}
+
+.btn{isolation:isolate}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);animation:ripple .5s ease-out;pointer-events:none}
+@keyframes ripple{to{transform:scale(4);opacity:0}}
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div class="spin-wrap"><div class="spin"></div></div>
+  <p>Generating PDF</p>
+  <span>Please wait…</span>
+</div>
+
+<!-- WhatsApp Share Modal -->
+<div id="wa-modal">
+  <div class="wa-box">
+    <div class="wa-box-hdr">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      <div class="wa-box-hdr-text">
+        <h3>Share on WhatsApp</h3>
+        <p>Preview & send quotation</p>
+      </div>
+    </div>
+    <div class="wa-box-body">
+      <div class="wa-preview" id="wa-preview-text"></div>
+      <div class="wa-actions">
+        <button class="wa-btn wa-btn-copy" onclick="copyWaMessage()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Message
+        </button>
+        <button class="wa-btn wa-btn-open" onclick="openWhatsApp()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+          Open WhatsApp
+        </button>
+      </div>
+      <div class="wa-copied" id="wa-copied">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Message copied to clipboard!
+      </div>
+      <button class="wa-close" onclick="closeWaModal()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Code Modal -->
+<div id="admin-modal">
+  <div class="am-box">
+    <div class="am-icon">
+      <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+    </div>
+    <h3>Access Required</h3>
+    <p>Enter your authorization code to continue</p>
+    <input type="password" class="am-input" id="admin-code-input" maxlength="18" placeholder="••••••••••••" autocomplete="off" oninput="clearAdminErr()" onkeydown="if(event.key==='Enter')verifyAdmin()"/>
+    <div class="am-err" id="admin-err"></div>
+    <div class="am-actions">
+      <button class="am-btn am-btn-cancel" onclick="closeAdminModal()">Cancel</button>
+      <button class="am-btn am-btn-ok" onclick="verifyAdmin()">Verify</button>
+    </div>
+  </div>
+</div>
+
+<div id="toolbar">
+  <div class="t-brand" style="position:relative">
+    <div class="t-brand-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 7H4c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 11H4V9h16v9zM6 14h2v2H6zm0-3h2v2H6zm4 3h4v2h-4zm0-3h4v2h-4zm5 3h3v2h-3zM4 5h16V3H4c-1.1 0-2 .9-2 2v1h2V5z"/></svg>
+    </div>
+    SBN <span>Logistics</span>
+    <!-- Hidden admin tap area – no visual indicator -->
+    <div id="admin-tap" onclick="triggerAdminMode()" title=""></div>
+  </div>
+  <div class="t-actions">
+    <button class="btn btn-new" onclick="newQuotation()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New
+    </button>
+    <button class="btn btn-print" onclick="downloadPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      PDF
+    </button>
+    <button class="btn btn-admin" id="admin-btn" onclick="triggerAdminMode()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+      Admin
+    </button>
+    <button class="btn btn-whatsapp" onclick="openWaModal()" id="whatsapp-btn" style="display:none">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      WhatsApp
+    </button>
+    <button class="btn btn-wdisc" id="wd-btn" onclick="goToWeightDiscrepancy()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.93 1H5.12z"/></svg>
+      Weight Discrepancy
+    </button>
+    <button class="btn btn-invoice" id="invoice-btn" onclick="goToShipmentInvoice()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+      Shipment Invoice
+    </button>
+  </div>
+</div>
+
+<div id="shell">
+<div class="card">
+
+  <div class="chdr">
+    <div class="chdr-grid"></div>
+    <div class="chdr-inner">
+      <div>
+        <div class="chdr-badge"><div class="chdr-badge-dot"></div>Shipping Quotation</div>
+        <div class="chdr-name">Sidharth <em>Bright</em> Networks</div>
+        <div class="chdr-contact">
+          <span>Supaul, Bihar – 852131</span><br/>
+          <span>+91 95087 87946</span>
+        </div>
+        <div class="admin-badge" id="admin-badge"><div class="admin-badge-dot"></div>Admin Mode Active</div>
+      </div>
+      <div class="chdr-right">
+        <div class="chdr-qlbl">Quotation No.</div>
+        <div class="chdr-qno" id="fh-qno">SBN-20260506-001</div>
+        <div class="chdr-date" id="fh-date"></div>
+        <div class="chdr-clock" id="fh-clock"></div>
+      </div>
+    </div>
+  </div>
+  <div class="red-strip"></div>
+
+  <div id="form-view">
+  <div class="cbody">
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+        Customer Details
+      </div>
+      <div class="g2">
+        <div class="fl"><label>Customer Name</label><input id="f-cname" placeholder="Full name" oninput="calcTotal()"/></div>
+        <div class="fl"><label>Mobile Number</label><input id="f-cmob" placeholder="+91 XXXXX XXXXX" type="tel" maxlength="13" oninput="calcTotal()"/></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></div>
+        Shipment Details
+      </div>
+      <div class="g2">
+        <div class="fl"><label>Origin Pincode</label><input id="f-from" placeholder="6-digit" type="number" maxlength="6"/></div>
+        <div class="fl"><label>Destination Pincode</label><input id="f-to" placeholder="6-digit" type="number" maxlength="6"/></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="g4">
+        <div class="fl"><label>Weight (kg)</label><input id="f-wt" type="number" placeholder="0.00" step="0.1" min="0"/></div>
+        <div class="fl"><label>Length (cm)</label><input id="f-len" type="number" placeholder="0" step="0.1" min="0"/></div>
+        <div class="fl"><label>Breadth (cm)</label><input id="f-bre" type="number" placeholder="0" step="0.1" min="0"/></div>
+        <div class="fl"><label>Height (cm)</label><input id="f-hgt" type="number" placeholder="0" step="0.1" min="0" oninput="calcTotal()"/></div>
+      </div>
+      <div id="dim-error" class="error-msg" style="display:none">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Please enter all package dimensions
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg></div>
+        Shipping Mode
+      </div>
+      <div class="mode-row">
+        <label class="mc sel" id="mc-s" onclick="setMode('Surface',this)">
+          <input type="radio" name="smode" value="Surface" checked/>
+          <div><div class="mc-name">🚛 Surface</div><div class="mc-transit">5–7 days</div></div>
+        </label>
+        <label class="mc" id="mc-a" onclick="setMode('Air',this)">
+          <input type="radio" name="smode" value="Air"/>
+          <div><div class="mc-name">✈️ Air</div><div class="mc-transit">2–3 days</div></div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div>
+        Pricing
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Charged Weight (kg)</label>
+          <input id="f-weight" type="text" readonly/>
+          <div class="hint" id="f-weight-hint"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> Enter all details to calculate</div>
+        </div>
+        <div class="fl"><label>Freight Charge</label><input id="f-freight" type="text" readonly/></div>
+      </div>
+    </div>
+
+    <!-- Admin Discount Section – completely absent from DOM for non-admin, injected on activation -->
+    <div id="admin-section">
+      <div class="admin-panel">
+        <div class="admin-panel-ttl">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          Admin Discount Control
+        </div>
+        <div class="discount-row">
+          <div class="fl">
+            <label>Discount Type</label>
+            <div class="discount-type-toggle">
+              <button id="disc-flat-btn" class="active" onclick="setDiscType('flat')">₹ Flat</button>
+              <button id="disc-pct-btn" onclick="setDiscType('pct')">% Percent</button>
+            </div>
+          </div>
+          <div class="fl">
+            <label id="disc-lbl">Discount Amount (₹)</label>
+            <input id="f-discount" type="number" placeholder="0" min="0" step="0.01" oninput="calcTotal()"/>
+          </div>
+        </div>
+        <div class="admin-result" id="admin-result" style="display:none">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <span id="admin-result-text"></span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></div>
+        Fare Summary
+      </div>
+      <div class="summ">
+        <div class="summ-r"><span class="sk">Freight Charge</span><span class="sv" id="s-freight">₹0.00</span></div>
+        <div class="summ-r" id="s-disc-row" style="display:none"><span class="sk">Discount Applied</span><span class="sv" id="s-disc" style="color:var(--green)">-₹0.00</span></div>
+        <div class="summ-r grand"><span class="sk">Total Payable</span><span class="sv" id="s-total">₹0.00</span></div>
+      </div>
+      <div class="notice-banner">
+        <div class="notice-banner-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V9h2v4z"/></svg>
+        </div>
+        <div class="notice-banner-body">
+          <div class="notice-banner-title">⚠ Important Notice</div>
+          <div class="notice-banner-msg">This is an <strong>estimated freight charge</strong>. Final amount may vary. Contact admin for <strong>discount</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="book-cta">
+        <div class="book-cta-title">📦 Ready to Ship?</div>
+        <div class="book-cta-sub">Your quotation is ready. Proceed to book your parcel with all details pre-filled.</div>
+        <button class="btn btn-book" onclick="goToBooking()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Click to Book Your Parcel
+        </button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></div>
+        Shipping Policy
+      </div>
+      <div class="policy-grid">
+        <div class="pi"><div class="pi-n">1</div><div class="pi-t">Parcel photo mandatory before dispatch.</div></div>
+        <div class="pi"><div class="pi-n">2</div><div class="pi-t">Proper packaging required by sender.</div></div>
+        <div class="pi"><div class="pi-n">3</div><div class="pi-t">No restricted or hazardous items allowed.</div></div>
+        <div class="pi"><div class="pi-n">4</div><div class="pi-t">Correct destination PIN code mandatory.</div></div>
+        <div class="pi"><div class="pi-n">5</div><div class="pi-t">No damage will be covered under this service.</div></div>
+        <div class="pi"><div class="pi-n">6</div><div class="pi-t">Transit delays due to weather/strikes not covered.</div></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <div class="cftr">Sidharth Bright Networks · Supaul, Bihar 852131 · +91 95087 87946 · Computer Generated Quotation</div>
+</div>
+</div>
+
+<script>
+/* ===== Ripple ===== */
+document.querySelectorAll('.btn').forEach(function(btn){
+  btn.addEventListener('click',function(e){
+    var r=btn.getBoundingClientRect();
+    var d=Math.max(r.width,r.height);
+    var x=e.clientX-r.left-d/2;
+    var y=e.clientY-r.top-d/2;
+    var rip=document.createElement('span');
+    rip.className='ripple';
+    rip.style.cssText='width:'+d+'px;height:'+d+'px;left:'+x+'px;top:'+y+'px';
+    btn.appendChild(rip);
+    setTimeout(function(){rip.remove()},500);
+  });
+});
+
+/* ===== Helpers ===== */
+function pad(n){return String(n).padStart(2,'0')}
+function dateStr(){var d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())}
+function todayLong(){
+  var d=new Date();
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return pad(d.getDate())+' '+M[d.getMonth()]+' '+d.getFullYear();
+}
+function todayShort(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
+function fmtRs(n){return '₹'+parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function pdfFmt(n){return 'Rs.'+parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function randStr(len){len=len||6;return Math.random().toString(36).substr(2,len).toUpperCase()}
+function ceilWeight(w){return Math.ceil(w)}
+
+var qCount=parseInt(sessionStorage.getItem('sbn_q')||'1');
+function getQNo(){return 'SBN-'+dateStr()+'-'+randStr(3)+String(qCount).padStart(3,'0')}
+
+function init(){
+  var q=getQNo();
+  document.getElementById('fh-qno').textContent=q;
+  document.getElementById('fh-date').textContent=todayLong();
+  calcTotal();
+}
+
+function tick(){
+  var d=new Date();
+  document.getElementById('fh-clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+}
+tick();setInterval(tick,1000);
+
+var curMode='Surface';
+function setMode(m,el){
+  curMode=m;
+  document.querySelectorAll('.mc').forEach(function(c){c.classList.remove('sel')});
+  el.classList.add('sel');
+  calcTotal();
+}
+
+/* ===== Shipping Rates ===== */
+var rates={air:{firstKgRate:298.99,perKgRate:298.99},surface:{baseUpTo2kg:249,perKgRate:100}};
+
+function calcFreight(rawWt,mode){
+  if(!rawWt||rawWt<=0)return 0;
+  var wt=ceilWeight(rawWt);
+  var base;
+  if(mode==='Air'){
+    base=wt<=1?rates.air.firstKgRate:wt*rates.air.perKgRate;
+  }else{
+    if(wt<=2)base=rates.surface.baseUpTo2kg;
+    else base=wt*rates.surface.perKgRate;
+  }
+  var paisa=(Math.floor(Math.random()*199)-99)/100;
+  return Math.round((base+paisa)*100)/100;
+}
+
+/* ===== Admin Mode ===== */
+var adminMode=false;
+var discType='flat'; // 'flat' or 'pct'
+
+// Time-based dynamic password: base prefix + HHMM (24h, always 4 digits)
+function getAdminCode(){
+  var now=new Date();
+  return '27937718'+pad(now.getHours())+pad(now.getMinutes());
+}
+
+function triggerAdminMode(){
+  if(adminMode){
+    // Already active – just flash the badge as feedback
+    var badge=document.getElementById('admin-badge');
+    badge.style.transition='opacity .15s';
+    badge.style.opacity='0.2';
+    setTimeout(function(){badge.style.opacity='1'},200);
+    return;
+  }
+  document.getElementById('admin-code-input').value='';
+  document.getElementById('admin-err').textContent='';
+  document.getElementById('admin-modal').classList.add('show');
+  setTimeout(function(){document.getElementById('admin-code-input').focus()},100);
+}
+
+function closeAdminModal(){
+  document.getElementById('admin-modal').classList.remove('show');
+}
+
+function clearAdminErr(){
+  document.getElementById('admin-err').textContent='';
+}
+
+function verifyAdmin(){
+  var val=document.getElementById('admin-code-input').value.trim();
+  if(val===getAdminCode()){
+    adminMode=true;
+    sessionStorage.setItem('sbn_admin','1');
+    document.getElementById('admin-modal').classList.remove('show');
+    document.getElementById('admin-section').classList.add('show');
+    document.getElementById('admin-badge').classList.add('show');
+    document.getElementById('admin-btn').classList.add('active');
+    document.getElementById('wd-btn').classList.add('show');
+    document.getElementById('invoice-btn').classList.add('show');
+    calcTotal();
+  }else{
+    var inp=document.getElementById('admin-code-input');
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    document.getElementById('admin-err').textContent='Incorrect code. Try again.';
+    inp.value='';
+    setTimeout(function(){inp.classList.remove('shake')},500);
+  }
+}
+
+function setDiscType(t){
+  discType=t;
+  document.getElementById('disc-flat-btn').classList.toggle('active',t==='flat');
+  document.getElementById('disc-pct-btn').classList.toggle('active',t==='pct');
+  document.getElementById('disc-lbl').textContent=t==='flat'?'Discount Amount (₹)':'Discount Percent (%)';
+  document.getElementById('f-discount').placeholder=t==='flat'?'0':'0';
+  document.getElementById('f-discount').value='';
+  calcTotal();
+}
+
+/* ===== Core Calculation ===== */
+var lastTotal=0;
+var currentFreight=0;
+var currentTotal=0;
+
+function calcTotal(){
+  var wt=parseFloat(document.getElementById('f-wt').value)||0;
+  var len=parseFloat(document.getElementById('f-len').value)||0;
+  var bre=parseFloat(document.getElementById('f-bre').value)||0;
+  var hgt=parseFloat(document.getElementById('f-hgt').value)||0;
+  var dimError=document.getElementById('dim-error');
+  var fields=[document.getElementById('f-len'),document.getElementById('f-bre'),document.getElementById('f-hgt')];
+  var hasError=false;
+  fields.forEach(function(f){
+    if(!f.value||parseFloat(f.value)<=0){f.parentElement.classList.add('error');hasError=true;}
+    else{f.parentElement.classList.remove('error');}
+  });
+  if(hasError){
+    dimError.style.display='flex';
+    document.getElementById('f-weight').value='';
+    document.getElementById('f-freight').value='';
+    document.getElementById('s-freight').textContent='₹0.00';
+    document.getElementById('s-total').textContent='₹0.00';
+    document.getElementById('whatsapp-btn').style.display='none';
+    currentFreight=0;currentTotal=0;
+    return;
+  }
+  dimError.style.display='none';
+  fields.forEach(function(f){f.parentElement.classList.remove('error')});
+  var volWt=(len*bre*hgt)/5000;
+  var finalWtRaw=Math.max(wt,volWt);
+  var freight=calcFreight(finalWtRaw,curMode);
+  currentFreight=freight;
+
+  // Discount calculation (admin only)
+  var discount=0;
+  if(adminMode){
+    var dval=parseFloat(document.getElementById('f-discount').value)||0;
+    if(discType==='pct'){
+      discount=Math.min(freight,(freight*dval/100));
+    }else{
+      discount=Math.min(freight,dval);
+    }
+    discount=Math.max(0,discount);
+  }
+  var total=Math.max(0,freight-discount);
+  currentTotal=total;
+
+  document.getElementById('f-weight').value=finalWtRaw.toFixed(2)+' kg';
+  document.getElementById('f-freight').value=freight>0?fmtRs(freight):'';
+
+  // Summary rows
+  document.getElementById('s-freight').textContent=fmtRs(freight);
+
+  if(adminMode&&discount>0){
+    document.getElementById('s-disc-row').style.display='flex';
+    document.getElementById('s-disc').textContent='-'+fmtRs(discount);
+    document.getElementById('admin-result').style.display='flex';
+    document.getElementById('admin-result-text').textContent='Discount of '+fmtRs(discount)+' applied → Final: '+fmtRs(total);
+  }else{
+    document.getElementById('s-disc-row').style.display='none';
+    document.getElementById('admin-result').style.display='none';
+  }
+
+  var totalEl=document.getElementById('s-total');
+  if(total!==lastTotal){
+    totalEl.classList.remove('pop');
+    void totalEl.offsetWidth;
+    totalEl.classList.add('pop');
+    lastTotal=total;
+  }
+  totalEl.textContent=fmtRs(total);
+
+  var hint=document.getElementById('f-weight-hint');
+  if(finalWtRaw===wt){hint.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Actual weight used';}
+  else{hint.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> Volumetric weight applied';}
+
+  var cname=document.getElementById('f-cname').value.trim();
+  var cmob=document.getElementById('f-cmob').value.trim();
+  if(cname&&cmob&&freight>0){
+    document.getElementById('whatsapp-btn').style.display='inline-flex';
+  }else{
+    document.getElementById('whatsapp-btn').style.display='none';
+  }
+}
+
+/* ===== WhatsApp ===== */
+var waMessageCache='';
+var waNumberCache='';
+
+function buildWaMessage(){
+  var cname=document.getElementById('f-cname').value.trim()||'Customer';
+  var qno=document.getElementById('fh-qno').textContent;
+  var from=document.getElementById('f-from').value||'-';
+  var to=document.getElementById('f-to').value||'-';
+  var wt=document.getElementById('f-weight').value||'-';
+  var transit=curMode==='Air'?'2–3 days':'5–7 days';
+  var totalFmt=fmtRs(currentTotal);
+
+  var msg='👋 Hello '+cname+',\n\n'
+    +'📋 *SBN LOGISTICS QUOTATION*\n\n'
+    +'Quotation No: '+qno+'\n\n'
+    +'📍 From: '+from+'\n'
+    +'📍 To: '+to+'\n'
+    +'⚖️ Weight: '+wt+'\n'
+    +'🚚 Mode: '+curMode+' ('+transit+')\n'
+    +'💰 Freight: '+totalFmt+'\n\n'
+    +'🌐 https://tinyurl.com/sbnlogistics\n\n'
+    +'✅ *Sidharth Bright Networks*\n'
+    +'Supaul, Bihar - 852131\n'
+    +'📞 +91 9508787946\n\n'
+    +'*Book now!*';
+  return msg;
+}
+
+function openWaModal(){
+  var cname=document.getElementById('f-cname').value.trim();
+  var cmob=document.getElementById('f-cmob').value.replace(/[^0-9]/g,'');
+  if(!cname){alert('Please enter customer name.');return;}
+  if(!cmob||cmob.length<10){alert('Please enter a valid mobile number.');return;}
+  if(currentFreight<=0){alert('Please fill in shipment details to calculate freight.');return;}
+
+  waMessageCache=buildWaMessage();
+  waNumberCache=cmob;
+
+  document.getElementById('wa-preview-text').textContent=waMessageCache;
+  document.getElementById('wa-copied').classList.remove('show');
+  document.getElementById('wa-modal').classList.add('show');
+}
+
+function closeWaModal(){
+  document.getElementById('wa-modal').classList.remove('show');
+}
+
+function copyWaMessage(){
+  if(!waMessageCache)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(waMessageCache).then(function(){
+      showCopied();
+    });
+  }else{
+    var ta=document.createElement('textarea');
+    ta.value=waMessageCache;
+    ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopied();
+  }
+}
+
+function showCopied(){
+  var el=document.getElementById('wa-copied');
+  el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show')},3000);
+}
+
+function openWhatsApp(){
+  if(!waMessageCache||!waNumberCache)return;
+  var url='https://wa.me/91'+waNumberCache+'?text='+encodeURIComponent(waMessageCache);
+  window.open(url,'_blank');
+}
+
+/* ===== New Quotation ===== */
+function newQuotation(){
+  if(!confirm('Clear form and start a new quotation?'))return;
+  qCount++;sessionStorage.setItem('sbn_q',qCount);
+  init();
+  ['f-cname','f-cmob','f-from','f-to','f-wt','f-len','f-bre','f-hgt'].forEach(function(id){document.getElementById(id).value=''});
+  if(adminMode)document.getElementById('f-discount').value='';
+  document.querySelectorAll('.fl').forEach(function(f){f.classList.remove('error')});
+  document.getElementById('dim-error').style.display='none';
+  document.querySelectorAll('.mc').forEach(function(c){c.classList.remove('sel')});
+  document.getElementById('mc-s').classList.add('sel');
+  document.querySelector('input[value="Surface"]').checked=true;
+  curMode='Surface';lastTotal=0;currentFreight=0;currentTotal=0;
+  document.getElementById('whatsapp-btn').style.display='none';
+  document.getElementById('s-disc-row').style.display='none';
+  document.getElementById('admin-result').style.display='none';
+}
+
+/* ===== Booking ===== */
+function goToBooking(){
+  var wt=document.getElementById('f-wt').value;
+  var len=document.getElementById('f-len').value;
+  var bre=document.getElementById('f-bre').value;
+  var hgt=document.getElementById('f-hgt').value;
+  if(!wt||!len||!bre||!hgt||parseFloat(wt)<=0||parseFloat(len)<=0||parseFloat(bre)<=0||parseFloat(hgt)<=0){
+    alert('Please enter valid weight and dimensions before booking.');
+    return;
+  }
+  var parcelData={
+    weight:wt,length:len,breadth:bre,height:hgt,
+    freight:fmtRs(currentTotal),mode:curMode,
+    fromPin:document.getElementById('f-from').value,
+    toPin:document.getElementById('f-to').value,
+    qno:document.getElementById('fh-qno').textContent
+  };
+  localStorage.setItem('sbn_parcelData',JSON.stringify(parcelData));
+  var cname=document.getElementById('f-cname').value;
+  var cmob=document.getElementById('f-cmob').value;
+  if(cname)localStorage.setItem('sbn_customerName',cname);
+  if(cmob)localStorage.setItem('sbn_customerMob',cmob);
+  window.location.href='booking.html';
+}
+
+/* ===== PDF ===== */
+function downloadPDF(){
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(buildPDF,80);
+}
+
+function buildPDF(){
+  try{
+    var jsPDFCtor=window.jspdf&&window.jspdf.jsPDF?window.jspdf.jsPDF:window.jsPDF;
+    var doc=new jsPDFCtor({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+
+    /* ===== OPTIMIZED PAGE CONSTANTS ===== */
+    var W=210,H=297;
+    var lm=10,rm=10,cw=W-lm-rm;      /* tighter margins */
+    var footerH=6;                     /* compact footer */
+    var bottomLimit=H-footerH-1;       /* absolute bottom boundary */
+    var y=0;
+
+    var qno=document.getElementById('fh-qno').textContent;
+    var cname=document.getElementById('f-cname').value||'-';
+    var cmob=document.getElementById('f-cmob').value||'-';
+    var ffrom=document.getElementById('f-from').value||'-';
+    var fto=document.getElementById('f-to').value||'-';
+    var displayWt=document.getElementById('f-weight').value||'-';
+
+    function pdfRs(n){return 'Rs.'+parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+    var ffreight=pdfRs(currentFreight);
+    var ftotal=pdfRs(currentTotal);
+    var amtX=lm+cw-6;                  /* safe right margin for amounts */
+    var transit=curMode==='Air'?'2-3 Days':'5-7 Days';
+
+    function rnd(r,g,b){doc.setDrawColor(r,g,b)}
+    function fill(r,g,b){doc.setFillColor(r,g,b)}
+    function txt(r,g,b){doc.setTextColor(r,g,b)}
+
+    /* Compact footer */
+    function drawFooter(){
+      fill(8,32,74);doc.rect(0,H-footerH,W,footerH,'F');
+      fill(192,23,40);doc.rect(0,H-footerH,W,0.8,'F');
+      doc.setFont('helvetica','normal');doc.setFontSize(5.5);
+      txt(140,175,225);
+      doc.text('Sidharth Bright Networks - Supaul, Bihar - 852131 - +91 9508787946 - Computer Generated Quotation',W/2,H-2.5,{align:'center'});
+    }
+
+    /* Safety check - single page enforcement */
+    function safeY(need){return (y+need)<=bottomLimit;}
+
+    /* Compact section heading with proper text padding */
+    function secHead(label){
+      fill(240,245,255);doc.rect(lm,y,cw,6,'F');
+      rnd(37,99,235);doc.setLineWidth(0.18);doc.rect(lm,y,cw,6,'S');
+      fill(11,45,107);doc.rect(lm,y,2,6,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);
+      txt(11,45,107);
+      doc.text(label.toUpperCase(),lm+5,y+4);
+      y+=8;
+    }
+
+    /* Compact field block with proper text spacing */
+    function fieldBlock(label,val,x,w){
+      doc.setFont('helvetica','bold');doc.setFontSize(5.5);
+      txt(120,135,165);
+      doc.text(label.toUpperCase(),x,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(8);
+      txt(14,22,55);
+      var lines=doc.splitTextToSize(String(val),w-2);
+      doc.text(lines[0]||'—',x,y+3.2);
+      rnd(220,228,245);doc.setLineWidth(0.15);
+      doc.line(x,y+4.5,x+w-2,y+4.5);
+    }
+
+    /* ===== COMPACT HEADER (32mm vs old 52mm) ===== */
+    fill(8,32,74);doc.rect(0,0,W,32,'F');
+    fill(15,45,100);doc.circle(W+3,2,18,'F');
+    fill(20,55,115);doc.circle(W+6,28,14,'F');
+    fill(192,23,40);doc.rect(0,30,W,2,'F');
+    fill(37,99,235);doc.rect(lm,9,20,0.8,'F');
+
+    doc.setFont('helvetica','bold');doc.setFontSize(14);
+    txt(255,255,255);
+    doc.text('Sidharth Bright Networks',lm,8);
+    doc.setFont('helvetica','normal');doc.setFontSize(6);
+    txt(160,195,240);
+    doc.text('LOGISTICS & COURIER SERVICES',lm,12.5);
+    doc.setFontSize(7);txt(185,210,245);
+    doc.text('Supaul, Bihar - 852131',lm,17);
+    doc.text('+91 9508787946',lm,21);
+
+    // Right side invoice info
+    doc.setFont('helvetica','bold');doc.setFontSize(5.5);
+    txt(120,155,210);
+    doc.text('SHIPPING QUOTATION',W-rm,6,{align:'right'});
+    fill(255,255,255);
+    doc.roundedRect(W-rm-50,7.5,50,7,1.5,1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);
+    txt(8,32,74);
+    doc.text(qno,W-rm-25,12.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+    txt(185,210,245);
+    doc.text('Date: '+todayShort(),W-rm,19,{align:'right'});
+    doc.text('Mode: '+curMode,W-rm,23,{align:'right'});
+    doc.text('Transit: '+transit,W-rm,27,{align:'right'});
+    y=36;
+
+    /* ===== CUSTOMER & SHIPMENT SECTION ===== */
+    secHead('Customer & Shipment Details');
+    var c1=lm,c2=lm+cw/2+2,hw=cw/2-4;
+    fieldBlock('Customer Name',cname,c1,hw);fieldBlock('Mobile Number',cmob,c2,hw);y+=8;
+    fieldBlock('Origin Pincode',ffrom,c1,hw);fieldBlock('Destination Pincode',fto,c2,hw);y+=8;
+    fieldBlock('Charged Weight',displayWt,c1,hw);fieldBlock('Shipping Mode',curMode+' - '+transit,c2,hw);y+=10;
+
+    /* ===== CHARGES SECTION ===== */
+    secHead('Charges & Payment Breakdown');
+    // Table header
+    fill(11,45,107);doc.rect(lm,y,cw,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+    txt(255,255,255);
+    doc.text('DESCRIPTION',lm+5,y+4.5);
+    doc.text('AMOUNT',amtX,y+4.5,{align:'right'});
+    y+=7;
+
+    // Freight row
+    fill(248,251,255);doc.rect(lm,y,cw,7.5,'F');
+    rnd(210,222,245);doc.setLineWidth(0.15);doc.rect(lm,y,cw,7.5,'S');
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+    txt(20,30,65);
+    doc.text('Freight Charge ('+curMode+')',lm+5,y+5);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);
+    txt(11,45,107);
+    doc.text(ffreight,amtX,y+5,{align:'right'});
+    y+=7.5;
+
+    // Discount row (conditional)
+    var discountAmt=currentFreight-currentTotal;
+    if(adminMode&&discountAmt>0){
+      fill(255,248,248);doc.rect(lm,y,cw,7,'F');
+      rnd(220,180,180);doc.setLineWidth(0.15);doc.rect(lm,y,cw,7,'S');
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+      txt(160,40,40);
+      doc.text('Discount Applied',lm+5,y+4.5);
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+      doc.text('-'+pdfRs(discountAmt),amtX,y+4.5,{align:'right'});
+      y+=7;
+    }
+
+    // Total row
+    fill(11,45,107);doc.rect(lm,y,cw,10,'F');
+    fill(192,23,40);doc.rect(lm,y,2,10,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);
+    txt(200,215,245);
+    doc.text('TOTAL PAYABLE AMOUNT',lm+6,y+6);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);
+    txt(255,255,255);
+    doc.text(ftotal,amtX,y+6,{align:'right'});
+    y+=11;
+
+    /* ===== DISCLAIMER (compact) ===== */
+    fill(248,249,251);doc.rect(lm,y,cw,12,'F');
+    rnd(148,163,184);doc.setLineWidth(0.2);doc.rect(lm,y,cw,12,'S');
+    fill(100,116,139);doc.rect(lm,y,2,12,'F');
+    doc.setFont('helvetica','bolditalic');doc.setFontSize(5.5);
+    txt(71,85,105);
+    doc.text('DISCLAIMER',lm+5,y+3.5);
+    doc.setFont('helvetica','italic');doc.setFontSize(6);
+    txt(100,116,139);
+    var disclaimer='This is a computer-generated quotation. Prices may vary based on actual weight and dimensions. This document is for reference only and not valid for legal use.';
+    var dLines=doc.splitTextToSize(disclaimer,cw-8);
+    doc.text(dLines,lm+5,y+7);
+    y+=13;
+
+    /* ===== TERMS & CONDITIONS (2-COLUMN COMPACT) ===== */
+    secHead('Terms & Conditions');
+    var policies=[
+      ['1','Parcel Photo Mandatory','A photograph of the parcel must be taken at the time of dispatch.'],
+      ['2','Proper Packaging Required','The sender is solely responsible for adequate packaging.'],
+      ['3','No Restricted Items','Prohibited, hazardous, flammable, or illegal items are strictly not accepted.'],
+      ['4','Correct Pincode Mandatory','Sender must provide the accurate destination PIN code.'],
+      ['5','No Damage Coverage','No damage will be covered under this service.'],
+      ['6','Transit Delay Disclaimer','We are not liable for delays caused by weather, strikes, or force majeure.'],
+    ];
+
+    // Two-column layout for policies
+    var colW=(cw-3)/2;
+    var col1X=lm,col2X=lm+colW+3;
+    var maxColH=0;
+
+    policies.forEach(function(p,i){
+      var isCol2=i%2===1;
+      var px=isCol2?col2X:col1X;
+      var py=y;
+
+      var lines=doc.splitTextToSize(p[2],colW-10);
+      var itemH=3+lines.length*2.8+2.5;
+
+      var bg=i%4<2?[245,248,255]:[250,252,255];
+      fill(bg[0],bg[1],bg[2]);doc.roundedRect(px,py,colW,itemH,1,1,'F');
+      rnd(210,225,250);doc.setLineWidth(0.15);doc.roundedRect(px,py,colW,itemH,1,1,'S');
+
+      fill(11,45,107);doc.circle(px+3.5,py+3,2.2,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(5);
+      txt(255,255,255);
+      doc.text(p[0],px+3.5,py+3.6,{align:'center'});
+
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+      txt(11,45,107);
+      doc.text(p[1],px+8,py+3);
+
+      doc.setFont('helvetica','normal');doc.setFontSize(5.5);
+      txt(55,70,100);
+      doc.text(lines,px+8,py+6);
+
+      if(isCol2){
+        y+=Math.max(itemH,maxColH)+2;
+        maxColH=0;
+      }else{
+        maxColH=itemH;
+      }
+    });
+    if(policies.length%2===1) y+=maxColH+2;
+    y+=3;
+
+    /* ===== COMPACT SIGNATURE BLOCK ===== */
+    fill(245,248,255);doc.rect(lm,y,cw,20,'F');
+    rnd(210,225,250);doc.setLineWidth(0.2);doc.rect(lm,y,cw,20,'S');
+    var sig1x=lm+6,sig2x=W-rm-50,sigW=46;
+    rnd(170,190,225);doc.setLineWidth(0.4);
+    doc.line(sig1x,y+12,sig1x+sigW,y+12);
+    doc.setFont('helvetica','bold');doc.setFontSize(6);
+    txt(80,100,140);
+    doc.text("CUSTOMER'S SIGNATURE",sig1x+sigW/2,y+15.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(5.5);txt(130,150,185);
+    doc.text('(Acceptance of T&C)',sig1x+sigW/2,y+18.5,{align:'center'});
+    rnd(170,190,225);doc.setLineWidth(0.4);
+    doc.line(sig2x,y+12,sig2x+sigW,y+12);
+    doc.setFont('helvetica','bold');doc.setFontSize(6);
+    txt(80,100,140);
+    doc.text('AUTHORIZED SIGNATORY',sig2x+sigW/2,y+15.5,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);txt(11,45,107);
+    doc.text('Sidharth Bright Networks',sig2x+sigW/2,y+18.5,{align:'center'});
+    y+=20;
+
+    /* ===== FINAL FOOTER ===== */
+    drawFooter();
+
+    /* ===== FORCE SINGLE PAGE ===== */
+    var totalPages=doc.internal.getNumberOfPages();
+    if(totalPages>1){
+      for(var pi=totalPages;pi>1;pi--){
+        doc.deletePage(pi);
+      }
+    }
+
+    doc.save('SBN-Quotation-'+qno+'.pdf');
+
+  }catch(e){
+    alert('PDF Error: '+e.message);console.error(e);
+  }finally{
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+/* ===== Weight Discrepancy Navigation ===== */
+function goToWeightDiscrepancy(){
+  document.getElementById('overlay').classList.add('show');
+  document.querySelector('#overlay p').textContent='Opening Module';
+  document.querySelector('#overlay span').textContent='Weight Discrepancy…';
+  setTimeout(function(){window.location.href='weight-discrepancy.html'},400);
+}
+
+/* ===== Shipment Invoice Navigation ===== */
+function goToShipmentInvoice(){
+  document.getElementById('overlay').classList.add('show');
+  document.querySelector('#overlay p').textContent='Opening Module';
+  document.querySelector('#overlay span').textContent='Shipment Invoice…';
+  setTimeout(function(){window.location.href='shipment-invoice.html'},400);
+}
+
+['f-wt','f-len','f-bre','f-hgt','f-cname','f-cmob'].forEach(function(id){
+  document.getElementById(id).addEventListener('input',calcTotal);
+});
+
+// Close modals on backdrop click
+document.getElementById('wa-modal').addEventListener('click',function(e){
+  if(e.target===this)closeWaModal();
+});
+document.getElementById('admin-modal').addEventListener('click',function(e){
+  if(e.target===this)closeAdminModal();
+});
+
+init();
+</script>
+</body>
+</html>
