@@ -1313,9 +1313,9 @@ function processOCRText(text){
 
   /* Pass 1: inline keyword → value on same line */
   var NAME_INLINE_PATTERNS = [
-    /\b(?:customer[\s\-]?name|consignee[\s\-]?name|recipient[\s\-]?name|receiver[\s\-]?name)\b[:\s]+([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){1,3})/i,
+    /\b(?:customer[\s\-]?name|consignee[\s\-]?name|recipient[\s\-]?name|receiver[\s\-]?name)\b[:\s]+([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){0,3})/i,
     /\b(?:dear|hello|hi)\b[,\s]+([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+)?)/i,
-    /\bname\s*[:\-]\s*([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){1,3})/i
+    /\bname\s*[:\-]\s*([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){0,3})/i
   ];
   lines.forEach(function(line){
     if(foundName) return;
@@ -1336,7 +1336,7 @@ function processOCRText(text){
       if(TRIG_RX.test(line)){
         for(var ni=i+1; ni<=Math.min(i+2, lines.length-1); ni++){
           var cand = lines[ni].trim();
-          if(/^[A-Za-z][a-zA-Z]{1,20}(?:\s[A-Za-z][a-zA-Z]{1,20}){1,3}$/.test(cand)
+          if(/^[A-Za-z][a-zA-Z]{1,20}(?:\s[A-Za-z][a-zA-Z]{1,20}){0,3}$/.test(cand)
              && !NAME_NOISE_RX.test(cand) && !/\d/.test(cand) && cand.length < 50){
             ocrExtracted.name = titleCase(cand); foundName = true; break;
           }
@@ -1350,7 +1350,7 @@ function processOCRText(text){
     lines.forEach(function(line){
       if(foundName) return;
       if(AWB_CTX_RX.test(line) || INV_CTX_RX.test(line) || NAME_NOISE_RX.test(line)) return;
-      if(/^[A-Z][a-zA-Z]{1,20}(?:\s[A-Z][a-zA-Z]{1,20}){1,3}$/.test(line)
+      if(/^[A-Z][a-zA-Z]{1,20}(?:\s[A-Z][a-zA-Z]{1,20}){0,3}$/.test(line)
          && !/\d/.test(line) && line.length < 45){
         ocrExtracted.name = titleCase(line); foundName = true;
       }
