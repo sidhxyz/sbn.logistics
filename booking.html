@@ -553,7 +553,7 @@ function submitBooking(){
   var fromPin=parcelData?parcelData.fromPin:'N/A';
   var toPin=parcelData?parcelData.toPin:'N/A';
 
-  var subject='SBN LOGISTICS - NEW BOOKING CONFIRMATION';
+  var subject='NEW BOOKING CONFIRMATION | '+oPhone;
   var body='SBN LOGISTICS - NEW BOOKING\n\n';
   body+='Booking Ref: '+document.getElementById('bk-ref').textContent+'\n';
   body+='Quotation No: '+qno+'\n\n';
