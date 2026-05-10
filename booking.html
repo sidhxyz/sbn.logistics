@@ -310,10 +310,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- Submit -->
     <div class="sec" style="text-align:center;margin-top:30px">
       <button class="btn btn-submit" onclick="submitBooking()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        Confirm & Send via WhatsApp
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Confirm & Send via Email
       </button>
-      <div style="margin-top:10px;font-size:11px;color:var(--muted)">You will be redirected to WhatsApp to complete your booking</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">Your booking details will be sent to our team via email</div>
     </div>
 
   </div>
@@ -445,7 +445,7 @@ function setFieldError(fieldId,hasError){
 }
 
 /* ══════════════════════════════════════════
-   SUBMIT BOOKING
+   SUBMIT BOOKING VIA EMAIL
 ══════════════════════════════════════════ */
 function submitBooking(){
   var valid=true;
@@ -543,7 +543,7 @@ function submitBooking(){
     return;
   }
 
-  /* Build WhatsApp message */
+  /* Build email body */
   var altPhone=document.getElementById('alt-phone').value.trim();
   var qno=parcelData?parcelData.qno:'N/A';
   var weight=parcelData?parcelData.weight+' kg':'N/A';
@@ -553,42 +553,43 @@ function submitBooking(){
   var fromPin=parcelData?parcelData.fromPin:'N/A';
   var toPin=parcelData?parcelData.toPin:'N/A';
 
-  var msg='*SBN LOGISTICS - NEW BOOKING*\n\n';
-  msg+='*Booking Ref:* '+document.getElementById('bk-ref').textContent+'\n';
-  msg+='*Quotation No:* '+qno+'\n\n';
-  msg+='*ORIGIN DETAILS*\n';
-  msg+='Address: '+oAddr+'\n';
-  msg+='Contact: '+oName+'\n';
-  msg+='Phone: '+oPhone+'\n\n';
-  msg+='*DESTINATION DETAILS*\n';
-  msg+='Address: '+dAddr+'\n';
-  msg+='Contact: '+dName+'\n';
-  msg+='Phone: '+dPhone+'\n\n';
-  msg+='*PARCEL DETAILS*\n';
-  msg+='Weight: '+weight+'\n';
-  msg+='Dimensions: '+dims+'\n';
-  msg+='Mode: '+mode+'\n';
-  msg+='Freight: '+freight+'\n';
-  msg+='Origin PIN: '+fromPin+'\n';
-  msg+='Destination PIN: '+toPin+'\n\n';
-  msg+='*ADDITIONAL INFO*\n';
-  msg+='Email: '+email+'\n';
-  if(altPhone)msg+='Alt Phone: '+altPhone+'\n';
-  msg+='\n*Terms Accepted:* Yes\n';
-  msg+='*No damage coverage acknowledged.*\n\n';
-  msg+='_Sidharth Bright Networks_\n';
-  msg+='Supaul, Bihar - 852131\n';
-  msg+='+91 95087 87946';
+  var subject='SBN LOGISTICS - NEW BOOKING CONFIRMATION';
+  var body='SBN LOGISTICS - NEW BOOKING\n\n';
+  body+='Booking Ref: '+document.getElementById('bk-ref').textContent+'\n';
+  body+='Quotation No: '+qno+'\n\n';
+  body+='ORIGIN DETAILS\n';
+  body+='Address: '+oAddr+'\n';
+  body+='Contact: '+oName+'\n';
+  body+='Phone: '+oPhone+'\n\n';
+  body+='DESTINATION DETAILS\n';
+  body+='Address: '+dAddr+'\n';
+  body+='Contact: '+dName+'\n';
+  body+='Phone: '+dPhone+'\n\n';
+  body+='PARCEL DETAILS\n';
+  body+='Weight: '+weight+'\n';
+  body+='Dimensions: '+dims+'\n';
+  body+='Mode: '+mode+'\n';
+  body+='Freight: '+freight+'\n';
+  body+='Origin PIN: '+fromPin+'\n';
+  body+='Destination PIN: '+toPin+'\n\n';
+  body+='ADDITIONAL INFO\n';
+  body+='Email: '+email+'\n';
+  if(altPhone)body+='Alt Phone: '+altPhone+'\n';
+  body+='\nTerms Accepted: Yes\n';
+  body+='No damage coverage acknowledged.\n\n';
+  body+='Sidharth Bright Networks\n';
+  body+='Supaul, Bihar - 852131\n';
+  body+='+91 95087 87946';
 
-  /* Send to company WhatsApp */
-  var companyNumber='919508787946';
-  var waUrl='https://wa.me/'+companyNumber+'?text='+encodeURIComponent(msg);
-  window.open(waUrl,'_blank');
+  /* Send email via mailto */
+  var companyEmail='contact@sbnlogistics.com';
+  var mailtoUrl='mailto:'+companyEmail+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  window.location.href=mailtoUrl;
 }
 
 /* ══════════════════════════════════════════
    INIT
-══════════════════════════════════════════ */
+══════════════════════════���═══════════════ */
 function init(){
   var bkRef='SBN-BK-'+dateStr()+'-'+randStr(3);
   document.getElementById('bk-ref').textContent=bkRef;
