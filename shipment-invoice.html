@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shipment Invoice – Sidharth Bright Networks</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+  --navy:#08204a;--blue:#0b2d6b;--blue2:#1847a8;--blue3:#2563eb;--blue4:#3b82f6;
+  --blue-lt:#e8f0fe;--blue-lllt:#f0f5ff;--red:#c01728;--red2:#dc2626;--red-lt:#fde8ea;
+  --border:#d0daf0;--border2:#bfcbea;--surface:#f2f6fc;--surface2:#eaf0fb;
+  --text:#0f1626;--muted:#5c6a8a;--white:#ffffff;--green:#16a34a;--green-lt:#f0fdf4;
+  --amber:#d97706;--amber-lt:#fffbeb;
+  --shadow:0 8px 32px rgba(11,45,107,.13);--shadow-lg:0 16px 48px rgba(11,45,107,.18);
+  --radius:14px;--radius-sm:9px;
+  --font:'Manrope',sans-serif;--mono:'DM Mono',monospace;--display:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);font-size:13.5px;color:var(--text);background:linear-gradient(135deg,#e8eff8 0%,#f2f6fc 50%,#e4ecf7 100%);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(37,99,235,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+
+/* ===== TOOLBAR ===== */
+#toolbar{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1.5px solid rgba(208,218,240,.8);padding:11px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:300;box-shadow:0 2px 20px rgba(11,45,107,.1);flex-wrap:wrap;gap:10px}
+.t-brand{font-family:var(--display);font-size:15px;font-weight:800;color:var(--blue);letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.t-brand-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(11,45,107,.3);flex-shrink:0}
+.t-brand-icon svg{width:16px;height:16px;fill:#fff}
+.t-brand span{color:var(--red)}
+.t-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.t-module-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--blue-lt),#e0ebff);border:1.5px solid var(--blue3);border-radius:20px;padding:5px 13px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue2)}
+.t-module-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--blue3);animation:blink 2s ease-in-out infinite}
+
+/* ===== TOP ACTION BAR ===== */
+#action-bar{display:none;background:linear-gradient(135deg,rgba(8,32,74,.97) 0%,rgba(11,45,107,.97) 100%);backdrop-filter:blur(20px);border-bottom:2px solid rgba(192,23,40,.5);padding:10px 28px;position:sticky;top:53px;z-index:299;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(11,45,107,.35);animation:actionBarIn .4s cubic-bezier(.22,1,.36,1) both}
+#action-bar.show{display:flex}
+@keyframes actionBarIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.ab-label{font-family:var(--display);font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.15em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.ab-label-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:blink 1.5s ease-in-out infinite;box-shadow:0 0 8px rgba(74,222,128,.5)}
+.ab-actions{display:flex;gap:10px;align-items:center}
+
+/* ===== BUTTONS ===== */
+.btn{font-family:var(--font);font-size:12px;font-weight:700;padding:9px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;transition:all .2s cubic-bezier(.34,1.56,.64,1);letter-spacing:.01em;display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;isolation:isolate}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(.97)!important}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn-back{background:var(--white);color:var(--blue);border:1.5px solid var(--border);box-shadow:0 2px 8px rgba(11,45,107,.06)}
+.btn-back:hover{background:var(--blue-lt);border-color:var(--blue3);color:var(--blue2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,.18)}
+.btn-primary{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;box-shadow:0 4px 14px rgba(11,45,107,.32)}
+.btn-primary:hover{background:linear-gradient(135deg,var(--blue2) 0%,var(--blue3) 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,45,107,.4)}
+.btn-success{background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.btn-success:hover{background:linear-gradient(135deg,#15803d 0%,#166534 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,.4)}
+.btn-whatsapp{background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.btn-whatsapp:hover{background:linear-gradient(135deg,#15803d 0%,#166534 100%);transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,.4)}
+.btn-danger{background:linear-gradient(135deg,var(--red) 0%,#e11d48 100%);color:#fff;box-shadow:0 4px 14px rgba(192,23,40,.3)}
+.btn-danger:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(192,23,40,.4)}
+.btn-outline{background:transparent;color:var(--blue2);border:1.5px solid var(--border2)}
+.btn-outline:hover{background:var(--blue-lt);border-color:var(--blue3)}
+.btn-sm{padding:7px 14px;font-size:11px}
+.btn-sm svg{width:12px;height:12px}
+.btn-ab-pdf{background:linear-gradient(135deg,rgba(37,99,235,.9) 0%,rgba(24,71,168,.9) 100%);color:#fff;border:1px solid rgba(99,139,255,.4);box-shadow:0 4px 14px rgba(11,45,107,.4);font-size:12px;padding:9px 22px}
+.btn-ab-pdf:hover{background:linear-gradient(135deg,var(--blue3) 0%,var(--blue2) 100%);transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,.5)}
+.btn-ab-wa{background:linear-gradient(135deg,rgba(22,163,74,.9) 0%,rgba(21,128,61,.9) 100%);color:#fff;border:1px solid rgba(74,222,128,.3);box-shadow:0 4px 14px rgba(22,163,74,.4);font-size:12px;padding:9px 22px}
+.btn-ab-wa:hover{background:linear-gradient(135deg,#15803d 0%,#166534 100%);transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,163,74,.5)}
+
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);animation:ripple .5s ease-out;pointer-events:none}
+@keyframes ripple{to{transform:scale(4);opacity:0}}
+
+/* ===== SHELL ===== */
+#shell{max-width:820px;margin:32px auto 100px;padding:0 16px;position:relative;z-index:1}
+.card{background:var(--white);border-radius:20px;border:1.5px solid rgba(208,218,240,.7);overflow:hidden;box-shadow:var(--shadow-lg);animation:cardIn .55s cubic-bezier(.22,1,.36,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ===== CARD HEADER ===== */
+.chdr{background:linear-gradient(130deg,#061d42 0%,var(--blue) 45%,#1a3d8a 75%,var(--blue2) 100%);padding:32px 36px 28px;position:relative;overflow:hidden}
+.chdr::before{content:'';position:absolute;right:-70px;top:-70px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18) 0%,transparent 70%);animation:orbPulse 6s ease-in-out infinite}
+.chdr::after{content:'';position:absolute;right:30px;bottom:-50px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(192,23,40,.15) 0%,transparent 70%);animation:orbPulse 6s ease-in-out infinite reverse}
+@keyframes orbPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1}}
+.chdr-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
+.chdr-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+.chdr-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px;backdrop-filter:blur(4px)}
+.chdr-badge-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.chdr-name{font-family:var(--display);font-size:26px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.1;margin-bottom:4px}
+.chdr-name em{color:#fca5a5;font-style:normal;text-shadow:0 0 20px rgba(252,165,165,.4)}
+.chdr-tagline{font-size:9.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:10px}
+.chdr-contact{font-size:11px;color:rgba(255,255,255,.55);line-height:2;margin-top:0}
+.chdr-contact span{color:rgba(255,255,255,.8);font-weight:600}
+.chdr-right{text-align:right;flex-shrink:0}
+.chdr-qlbl{font-size:8.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.chdr-qno{font-family:var(--mono);font-size:13px;font-weight:500;color:#fff;letter-spacing:.06em;margin-bottom:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;display:inline-block}
+.chdr-date{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px}
+.chdr-clock{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.08em}
+.admin-badge-si{display:inline-flex;align-items:center;gap:5px;background:rgba(37,99,235,.25);border:1px solid rgba(100,150,255,.35);border-radius:12px;padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd;margin-top:8px}
+.admin-badge-dot{width:5px;height:5px;border-radius:50%;background:#60a5fa;animation:blink 1.5s ease-in-out infinite}
+
+.red-strip{height:4px;background:linear-gradient(90deg,var(--red),#f43f5e,var(--red));background-size:200% 100%;animation:stripFlow 4s ease-in-out infinite}
+@keyframes stripFlow{0%,100%{background-position:0% 0%}50%{background-position:100% 0%}}
+
+/* ===== BODY ===== */
+.cbody{padding:32px 34px}
+.sec{margin-bottom:32px;animation:secIn .4s cubic-bezier(.22,1,.36,1) both}
+.sec:nth-child(1){animation-delay:.05s}.sec:nth-child(2){animation-delay:.1s}.sec:nth-child(3){animation-delay:.15s}
+.sec:nth-child(4){animation-delay:.2s}.sec:nth-child(5){animation-delay:.25s}.sec:nth-child(6){animation-delay:.3s}
+@keyframes secIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.sec-ttl{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue2);padding-bottom:12px;margin-bottom:20px;display:flex;align-items:center;gap:8px;border-bottom:1.5px solid transparent;border-image:linear-gradient(90deg,var(--blue-lt),transparent) 1}
+.sec-ttl-dot{width:18px;height:18px;border-radius:5px;min-width:18px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);display:flex;align-items:center;justify-content:center}
+.sec-ttl-dot svg{width:9px;height:9px;fill:#fff}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.fl{display:flex;flex-direction:column;gap:8px}
+.fl label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:2px}
+.fl input,.fl select,.fl textarea{font-family:var(--font);font-size:13.5px;padding:13px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);width:100%;outline:none;transition:border-color .18s,background .18s,box-shadow .18s,transform .15s}
+.fl textarea{resize:vertical;min-height:100px;line-height:1.6}
+.fl input:hover,.fl select:hover,.fl textarea:hover{border-color:var(--border2);background:#edf2fb}
+.fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.1);transform:translateY(-1px)}
+.fl input[readonly]{background:linear-gradient(135deg,#eef2fb,#e8f0fe);color:var(--blue2);cursor:default;font-family:var(--mono);font-size:13px;font-weight:500;border-color:#c8d6f0;padding:13px 16px}
+#f-date{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue);cursor:pointer}
+#f-date::-webkit-calendar-picker-indicator{opacity:.55;cursor:pointer;filter:invert(18%) sepia(80%) saturate(600%) hue-rotate(200deg)}
+
+/* ===== AMOUNT FIELDS ===== */
+.fl.amount-field input{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue);background:linear-gradient(135deg,#eef4ff,#e8f0fe);padding:14px 16px}
+.fl.amount-field input:focus{background:#fff}
+.fl.total-field input{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;font-family:var(--mono);font-size:18px;font-weight:700;border-color:transparent;box-shadow:0 4px 16px rgba(11,45,107,.3);padding:16px 18px}
+.fl.total-field input:focus{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);box-shadow:0 0 0 4px rgba(37,99,235,.2),0 4px 16px rgba(11,45,107,.3);transform:none}
+.fl.total-field input::placeholder{color:rgba(255,255,255,.5)}
+.fl.total-field label{color:var(--blue2);font-weight:800}
+
+/* ===== LOGO PLACEHOLDER IN HEADER ===== */
+.chdr-logo-wrap{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.18);flex-shrink:0;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.chdr-logo-wrap svg{width:26px;height:26px;fill:#fff;opacity:.9}
+
+/* ===== SIGNATURE BLOCK ===== */
+.sig-block{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--border2);border-radius:12px;overflow:hidden;margin-top:28px;margin-bottom:4px}
+.sig-col{padding:20px 24px 16px;background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:0}
+.sig-col:first-child{border-right:1.5px solid var(--border2)}
+.sig-col:last-child{background:linear-gradient(135deg,var(--blue-lllt),#f0f5ff)}
+.sig-line{width:100%;height:1.5px;background:var(--border2);margin:14px 0 8px}
+.sig-label{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center}
+.sig-sub{font-size:10.5px;color:var(--muted);font-style:italic;margin-top:3px;text-align:center}
+.sig-company{font-size:12px;font-weight:800;color:var(--blue2);margin-top:3px;text-align:center}
+
+/* ===== PAYMENT STATUS TOGGLE ===== */
+.status-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;width:100%}
+.st-btn{
+  flex:1;padding:13px 16px;border:none;cursor:pointer;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--surface);color:var(--muted);letter-spacing:.01em;
+}
+.st-btn svg{width:15px;height:15px;flex-shrink:0}
+.st-btn:first-child{border-right:1px solid var(--border)}
+.st-btn.active.st-dues{background:var(--amber-lt);color:var(--amber);box-shadow:inset 0 2px 8px rgba(217,119,6,.08)}
+.st-btn.active.st-paid{background:var(--green-lt);color:var(--green);box-shadow:inset 0 2px 8px rgba(22,163,74,.08)}
+.st-btn:not(.active):hover{background:var(--blue-lllt);color:var(--blue2)}
+.status-paid-stamp{
+  display:none;background:linear-gradient(135deg,var(--green-lt),#dcfce7);
+  border:2px solid #86efac;border-left:5px solid var(--green);
+  border-radius:10px;padding:12px 16px;
+  font-size:13px;font-weight:800;color:var(--green);
+  align-items:center;gap:10px;margin-top:10px;
+  box-shadow:0 2px 12px rgba(22,163,74,.12);
+  letter-spacing:.01em;
+}
+.status-paid-stamp.show{display:flex}
+.status-dues-stamp{
+  display:none;background:var(--amber-lt);
+  border:2px solid #fcd34d;border-left:5px solid var(--amber);
+  border-radius:10px;padding:12px 16px;
+  font-size:13px;font-weight:800;color:var(--amber);
+  align-items:center;gap:10px;margin-top:10px;
+  box-shadow:0 2px 12px rgba(217,119,6,.12);
+  letter-spacing:.01em;
+}
+.status-dues-stamp.show{display:flex}
+
+/* ===== GENERATE BUTTON ===== */
+.generate-btn-wrap{text-align:center;margin:28px 0 12px}
+.btn-generate{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;font-size:14px;padding:14px 36px;border-radius:12px;box-shadow:0 6px 20px rgba(11,45,107,.35);font-weight:800;letter-spacing:.04em}
+.btn-generate:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(11,45,107,.45)}
+.btn-generate svg{width:18px;height:18px}
+
+/* ===== POLICY SECTION ===== */
+.policy-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pi{display:flex;align-items:flex-start;gap:12px;background:linear-gradient(135deg,var(--blue-lllt),#f8faff);border:1px solid var(--blue-lt);border-left:3px solid var(--blue3);border-radius:10px;padding:14px 16px;min-height:60px;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.pi:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(37,99,235,.1);border-color:var(--blue3);border-left-color:var(--blue)}
+.pi-n{width:24px;height:24px;min-width:24px;border-radius:6px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;box-shadow:0 2px 6px rgba(11,45,107,.25);flex-shrink:0}
+.pi-t{font-size:12.5px;color:#1e3160;line-height:1.65;font-weight:500}
+
+/* ===== INVOICE SUCCESS BANNER ===== */
+#invoice-success{display:none;margin-bottom:26px;animation:secIn .45s cubic-bezier(.22,1,.36,1) both}
+#invoice-success.show{display:block}
+.success-banner{background:linear-gradient(135deg,var(--green-lt),#f0fdf4);border:1.5px solid #86efac;border-left:4px solid var(--green);border-radius:14px;padding:22px 26px;display:flex;align-items:center;gap:16px}
+.success-icon{width:44px;height:44px;min-width:44px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#15803d);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.success-icon svg{width:22px;height:22px;fill:#fff}
+.success-text h4{font-family:var(--display);font-size:14px;font-weight:700;color:#15803d;margin-bottom:3px}
+.success-text p{font-size:11.5px;color:#166534;opacity:.8;line-height:1.5}
+
+/* ===== OVERLAY ===== */
+#overlay{display:none;position:fixed;inset:0;background:rgba(6,29,66,.65);backdrop-filter:blur(8px);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+#overlay.show{display:flex}
+.spin-wrap{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay p{color:#fff;font-size:14px;font-weight:600;font-family:var(--display);letter-spacing:.05em}
+#overlay span{color:rgba(255,255,255,.5);font-size:11px}
+
+/* ===== TOAST ===== */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--blue);color:#fff;padding:11px 22px;border-radius:10px;font-size:12.5px;font-weight:700;z-index:9999;opacity:0;transition:all .35s cubic-bezier(.22,1,.36,1);pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(11,45,107,.4)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(--green)}
+#toast.error{background:var(--red)}
+
+/* ===== WA MODAL ===== */
+#wa-modal{display:none;position:fixed;inset:0;background:rgba(6,29,66,.6);backdrop-filter:blur(10px);z-index:998;align-items:center;justify-content:center;padding:20px}
+#wa-modal.show{display:flex;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.wa-box{background:#fff;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(11,45,107,.3);overflow:hidden;animation:slideUp .3s cubic-bezier(.22,1,.36,1) both}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.wa-box-hdr{background:linear-gradient(135deg,#16a34a,#15803d);padding:20px 24px;display:flex;align-items:center;gap:12px}
+.wa-box-hdr svg{width:28px;height:28px;fill:#fff;flex-shrink:0}
+.wa-box-hdr-text{color:#fff}
+.wa-box-hdr-text h3{font-family:var(--display);font-size:16px;font-weight:700}
+.wa-box-hdr-text p{font-size:11px;opacity:.75;margin-top:2px}
+.wa-box-body{padding:20px 24px}
+.wa-preview{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:16px;font-size:12px;line-height:1.75;white-space:pre-line;color:#1a3a1a;font-family:var(--mono);max-height:260px;overflow-y:auto;margin-bottom:16px;word-break:break-word}
+.wa-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wa-btn{padding:12px;border:none;border-radius:10px;font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.wa-btn-copy{background:var(--surface);color:var(--blue);border:1.5px solid var(--border)}
+.wa-btn-copy:hover{background:var(--blue-lt);border-color:var(--blue3)}
+.wa-btn-open{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.wa-btn-open:hover{background:linear-gradient(135deg,#15803d,#166534)}
+.wa-close{display:block;width:100%;padding:10px;border:none;background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px}
+.wa-close:hover{color:var(--red)}
+.wa-copied{display:none;align-items:center;gap:5px;color:var(--green);font-size:11px;font-weight:700;justify-content:center;margin-top:8px}
+.wa-copied.show{display:flex}
+
+/* ===== FOOTER ===== */
+.cftr{background:linear-gradient(135deg,var(--blue) 0%,#061d42 100%);text-align:center;font-size:11px;color:rgba(255,255,255,.4);padding:14px 12px;letter-spacing:.06em;font-family:var(--mono);border-top:3px solid rgba(192,23,40,.5)}
+
+/* ===== COURIER TRIGGER FIELD ===== */
+.courier-trigger-wrap{position:relative;cursor:pointer;display:block}
+.courier-trigger-input{cursor:pointer!important;padding-right:64px!important;background:linear-gradient(135deg,var(--surface),#edf2fb)!important;transition:border-color .18s,box-shadow .18s,background .18s!important}
+.courier-trigger-input:hover{border-color:var(--blue3)!important;background:linear-gradient(135deg,#e8f0fe,#dce8fc)!important}
+.courier-trigger-input:focus{border-color:var(--blue3)!important;box-shadow:0 0 0 4px rgba(37,99,235,.12)!important;transform:none!important}
+.courier-trigger-input.has-value{color:var(--blue)!important;font-weight:700!important;background:linear-gradient(135deg,#eef4ff,#e8f0fe)!important}
+.courier-trigger-icon{position:absolute;right:0;top:0;bottom:0;display:flex;align-items:center;gap:4px;padding:0 12px;pointer-events:none;color:var(--muted)}
+.courier-trigger-icon svg{width:14px;height:14px;flex-shrink:0}
+.courier-chevron{transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.courier-modal-open .courier-chevron{transform:rotate(180deg)}
+
+/* ===== COURIER PICKER MODAL ===== */
+#courier-modal{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;justify-content:center;visibility:hidden;pointer-events:none}
+#courier-modal.open{visibility:visible;pointer-events:auto}
+.cp-backdrop{position:absolute;inset:0;background:rgba(6,20,55,.55);backdrop-filter:blur(6px);opacity:0;transition:opacity .3s ease}
+#courier-modal.open .cp-backdrop{opacity:1}
+.cp-sheet{position:relative;width:100%;max-width:560px;max-height:88vh;background:#fff;border-radius:24px 24px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 48px rgba(11,45,107,.28);transform:translateY(100%);transition:transform .38s cubic-bezier(.22,1,.36,1);will-change:transform}
+#courier-modal.open .cp-sheet{transform:translateY(0)}
+@media(min-width:640px){
+  #courier-modal{align-items:center}
+  .cp-sheet{max-height:82vh;border-radius:20px;transform:translateY(32px) scale(.96);opacity:0;transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+  #courier-modal.open .cp-sheet{transform:translateY(0) scale(1);opacity:1}
+}
+.cp-handle-bar{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 0;flex-shrink:0}
+@media(min-width:640px){.cp-handle-bar{display:none}}
+
+/* Head */
+.cp-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1.5px solid var(--border);flex-shrink:0}
+.cp-head-left{display:flex;align-items:center;gap:12px}
+.cp-head-icon{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(11,45,107,.28)}
+.cp-head-icon svg{width:18px;height:18px;stroke:#fff}
+.cp-head-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--blue);letter-spacing:-.02em}
+.cp-head-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.cp-close-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .18s;color:var(--muted)}
+.cp-close-btn:hover{background:var(--red-lt);border-color:var(--red2);color:var(--red2)}
+.cp-close-btn svg{width:14px;height:14px}
+
+/* Search */
+.cp-search-wrap{position:relative;padding:12px 16px 8px;flex-shrink:0}
+.cp-search-icon{position:absolute;left:28px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex}
+.cp-search-icon svg{width:15px;height:15px}
+.cp-search-input{width:100%;padding:11px 40px 11px 40px;border:1.5px solid var(--border);border-radius:11px;font-family:var(--font);font-size:13.5px;color:var(--text);background:var(--surface);outline:none;transition:border-color .18s,box-shadow .18s}
+.cp-search-input:focus{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 3.5px rgba(37,99,235,.11)}
+.cp-search-clear{position:absolute;right:28px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:none;background:var(--muted);display:none;align-items:center;justify-content:center;cursor:pointer;transition:background .18s}
+.cp-search-clear.visible{display:flex}
+.cp-search-clear:hover{background:var(--red2)}
+.cp-search-clear svg{width:11px;height:11px;stroke:#fff}
+
+/* Meta */
+.cp-meta{padding:0 20px 6px;font-size:11px;color:var(--muted);flex-shrink:0}
+.cp-meta strong{color:var(--blue2)}
+
+/* List */
+.cp-list-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.cp-list{flex:1;overflow-y:auto;padding:4px 10px 8px;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.cp-list::-webkit-scrollbar{width:4px}
+.cp-list::-webkit-scrollbar-track{background:transparent}
+.cp-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Courier item */
+.cp-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .16s cubic-bezier(.34,1.56,.64,1);user-select:none;-webkit-tap-highlight-color:transparent}
+.cp-item:hover,.cp-item:focus{background:var(--blue-lllt);border-color:var(--blue-lt);transform:translateX(3px)}
+.cp-item:active{transform:scale(.98) translateX(1px)}
+.cp-item.selected{background:linear-gradient(135deg,var(--blue-lt),#dce8fc);border-color:var(--blue3)}
+.cp-item-logo{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:-.03em;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.cp-item-info{flex:1;min-width:0}
+.cp-item-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-item-name mark{background:rgba(37,99,235,.14);color:var(--blue2);border-radius:3px;padding:0 1px}
+.cp-item-tag{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-item-check{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue2));display:none;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(11,45,107,.3)}
+.cp-item.selected .cp-item-check{display:flex}
+.cp-item-check svg{width:11px;height:11px;stroke:#fff}
+
+/* Category divider */
+.cp-divider{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:8px 12px 4px;display:flex;align-items:center;gap:8px}
+.cp-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Empty state */
+.cp-empty{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px 20px;color:var(--muted);text-align:center}
+.cp-empty.show{display:flex}
+.cp-empty svg{width:40px;height:40px;opacity:.35}
+.cp-empty span{font-size:13px;font-weight:600;color:var(--text)}
+.cp-empty em{font-style:normal;color:var(--blue2)}
+.cp-empty small{font-size:11px}
+
+/* Footer */
+.cp-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 14px;border-top:1.5px solid var(--border);flex-shrink:0}
+.cp-footer-badge{display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1px solid #bbf7d0;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--green)}
+.cp-footer-badge svg{width:11px;height:11px;stroke:var(--green)}
+.cp-footer-tip{font-size:10.5px;color:var(--muted)}
+
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  body,html{background:#fff!important;margin:0;padding:0;width:210mm;height:297mm;overflow:hidden}
+  #toolbar,#action-bar,#overlay,.no-print,#wa-modal,#invoice-success,.generate-btn-wrap{display:none!important}
+  #shell{max-width:210mm!important;margin:0!important;padding:0!important;position:absolute;top:0;left:0}
+  .card{border:none!important;box-shadow:none!important;border-radius:0!important;width:210mm;min-height:297mm}
+  .cbody{padding:0!important}
+  @page{size:A4 portrait;margin:0;padding:0}
+  .sec{margin-bottom:0!important;page-break-inside:avoid!important}
+  .policy-grid{page-break-inside:avoid!important}
+  .pi{page-break-inside:avoid!important}
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:580px){
+  .chdr-inner{flex-direction:column}
+  .chdr-right{text-align:left}
+  .g2,.g3{grid-template-columns:1fr}
+  .cbody{padding:24px 20px}
+  #toolbar{padding:12px 16px;justify-content:center}
+  .t-actions{order:-1;width:100%;justify-content:center}
+  .policy-grid{grid-template-columns:1fr;gap:12px}
+  .wa-actions{grid-template-columns:1fr}
+  #action-bar{top:52px;padding:12px 16px}
+  .ab-label{font-size:10px}
+  .btn-ab-pdf,.btn-ab-wa{padding:10px 16px;font-size:11px}
+  .sec{margin-bottom:24px}
+  .sec-ttl{margin-bottom:16px;padding-bottom:10px}
+  .fl input,.fl select,.fl textarea{padding:12px 14px}
+  .pi{padding:12px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- Overlay -->
+<div id="overlay">
+  <div class="spin-wrap"><div class="spin"></div></div>
+  <p id="overlay-title">Generating PDF</p>
+  <span id="overlay-sub">Please wait…</span>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- WhatsApp Modal -->
+<div id="wa-modal">
+  <div class="wa-box">
+    <div class="wa-box-hdr">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      <div class="wa-box-hdr-text">
+        <h3>Share via WhatsApp</h3>
+        <p>Send shipment invoice details</p>
+      </div>
+    </div>
+    <div class="wa-box-body">
+      <div class="wa-preview" id="wa-preview-text"></div>
+      <div class="wa-actions">
+        <button class="wa-btn wa-btn-copy" onclick="copyWaMessage()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Message
+        </button>
+        <button class="wa-btn wa-btn-open" onclick="openWhatsApp()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+          Open WhatsApp
+        </button>
+      </div>
+      <div class="wa-copied" id="wa-copied">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Copied to clipboard!
+      </div>
+      <button class="wa-close" onclick="closeWaModal()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="t-brand">
+    <div class="t-brand-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 7H4c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 11H4V9h16v9zM6 14h2v2H6zm0-3h2v2H6zm4 3h4v2h-4zm0-3h4v2h-4zm5 3h3v2h-3zM4 5h16V3H4c-1.1 0-2 .9-2 2v1h2V5z"/></svg>
+    </div>
+    SBN <span>Logistics</span>
+  </div>
+  <div class="t-actions">
+    <div class="t-module-badge"><div class="t-module-badge-dot"></div>Shipment Invoice</div>
+    <button class="btn btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+  </div>
+</div>
+
+<!-- TOP ACTION BAR -->
+<div id="action-bar">
+  <div class="ab-label">
+    <div class="ab-label-dot"></div>
+    Invoice Ready
+  </div>
+  <div class="ab-actions">
+    <button class="btn btn-ab-pdf" onclick="downloadPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn btn-ab-wa" onclick="openWaModal()">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      Share on WhatsApp
+    </button>
+  </div>
+</div>
+
+<div id="shell">
+<div class="card">
+
+  <!-- CARD HEADER -->
+  <div class="chdr">
+    <div class="chdr-grid"></div>
+    <div class="chdr-inner">
+      <div>
+        <div class="chdr-badge"><div class="chdr-badge-dot"></div>Shipment Invoice Module</div>
+        <div class="chdr-logo-wrap">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 7H4c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 11H4V9h16v9zM6 14h2v2H6zm0-3h2v2H6zm4 3h4v2h-4zm0-3h4v2h-4zm5 3h3v2h-3zM4 5h16V3H4c-1.1 0-2 .9-2 2v1h2V5z"/></svg>
+        </div>
+        <div class="chdr-name">Sidharth <em>Bright</em> Networks</div>
+        <div class="chdr-tagline">Logistics &amp; Courier Services</div>
+        <div class="chdr-contact">
+          <span>Supaul, Bihar – 852131</span><br/>
+          <span>+91 95087 87946</span>
+        </div>
+        <div class="admin-badge-si"><div class="admin-badge-dot"></div>Admin Mode · Shipment Invoice</div>
+      </div>
+      <div class="chdr-right">
+        <div class="chdr-qlbl">Invoice No.</div>
+        <div class="chdr-qno" id="fh-invno">SI-—</div>
+        <div class="chdr-date" id="fh-date"></div>
+        <div class="chdr-clock" id="fh-clock"></div>
+      </div>
+    </div>
+  </div>
+  <div class="red-strip"></div>
+
+  <div class="cbody">
+
+    <!-- SECTION 1: Invoice Info -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        </div>
+        Invoice Information
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Invoice Number</label>
+          <input id="f-invno" type="text" readonly/>
+        </div>
+        <div class="fl">
+          <label>Date</label>
+          <input id="f-date" type="date"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Customer Details -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+        </div>
+        Customer Details
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Customer Name</label>
+          <input id="f-cname" type="text" placeholder="Full Name"/>
+        </div>
+        <div class="fl">
+          <label>Customer Mobile Number</label>
+          <input id="f-cmob" type="tel" placeholder="+91 XXXXX XXXXX" maxlength="13"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Shipment Route -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg>
+        </div>
+        Shipment Route
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Origin Pincode</label>
+          <input id="f-origin" type="text" placeholder="e.g. 110001" maxlength="10"/>
+        </div>
+        <div class="fl">
+          <label>Destination Pincode</label>
+          <input id="f-dest" type="text" placeholder="e.g. 400001" maxlength="10"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Shipment Details -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
+        </div>
+        Shipment Details
+      </div>
+      <div class="g3">
+        <div class="fl" style="grid-column:span 1">
+          <label>AWB Number</label>
+          <input id="f-awb" type="text" placeholder="Air Waybill No." autocomplete="off"/>
+        </div>
+        <div class="fl" style="grid-column:span 1">
+          <label>Courier Company</label>
+          <div class="courier-trigger-wrap" onclick="openCourierPicker()">
+            <input id="f-courier" type="text" placeholder="Click to select courier…" autocomplete="off" readonly class="courier-trigger-input"/>
+            <span class="courier-trigger-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg class="courier-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+        </div>
+        <div class="fl" style="grid-column:span 1">
+          <label>Parcel Weight (kg)</label>
+          <input id="f-dweight" type="number" placeholder="0.00" min="0" step="0.01"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: Charges -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        Invoice Charges
+      </div>
+      <div class="g2" style="margin-bottom:18px">
+        <div class="fl total-field">
+          <label>Total Freight Amount (₹)</label>
+          <input id="f-total" type="number" placeholder="0.00" min="0" step="0.01" oninput="syncTotal()"/>
+        </div>
+        <div class="fl">
+          <label>Payment Status</label>
+          <div class="status-toggle">
+            <button type="button" class="st-btn st-dues active" id="st-dues" onclick="setStatus('dues')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Dues
+            </button>
+            <button type="button" class="st-btn st-paid" id="st-paid" onclick="setStatus('paid')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Paid
+            </button>
+          </div>
+          <div class="status-dues-stamp" id="status-dues-stamp">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Payment Dues — Amount pending
+          </div>
+          <div class="status-paid-stamp" id="status-paid-stamp">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Payment Received — Cleared
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: Remarks -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+        </div>
+        Remarks
+      </div>
+      <div class="fl">
+        <label>Remarks / Notes (Optional)</label>
+        <textarea id="f-remarks" placeholder="Add any internal notes, shipment details, or special remarks here…" rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- GENERATE BUTTON -->
+    <div class="generate-btn-wrap no-print">
+      <button class="btn btn-generate" onclick="generateInvoice()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Generate Shipment Invoice
+      </button>
+    </div>
+
+    <!-- SUCCESS BANNER -->
+    <div id="invoice-success">
+      <div class="success-banner">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+        <div class="success-text">
+          <h4>Invoice Generated Successfully</h4>
+          <p id="success-sub">Use the action bar above to Download PDF or Share on WhatsApp.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- POLICY SECTION -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        </div>
+        Shipment Invoice & Billing Policy
+      </div>
+      <div class="policy-grid">
+        <div class="pi"><div class="pi-n">1</div><div class="pi-t">All invoiced charges are based on actual shipment details provided at the time of booking.</div></div>
+        <div class="pi"><div class="pi-n">2</div><div class="pi-t">Freight charges are calculated based on declared or actual weight, whichever is higher.</div></div>
+        <div class="pi"><div class="pi-n">3</div><div class="pi-t">Handling charges apply for special care, fragile, or oversized shipments.</div></div>
+        <div class="pi"><div class="pi-n">4</div><div class="pi-t">GST and applicable taxes are levied as per government regulations and may vary by service type.</div></div>
+        <div class="pi"><div class="pi-n">5</div><div class="pi-t">Payment must be completed within 7 days of invoice date to avoid penalty charges.</div></div>
+        <div class="pi"><div class="pi-n">6</div><div class="pi-t">All invoices are system-generated and serve as official billing documents.</div></div>
+        <div class="pi"><div class="pi-n">7</div><div class="pi-t">Disputes regarding invoice amounts must be raised within 48 hours of receipt.</div></div>
+        <div class="pi"><div class="pi-n">8</div><div class="pi-t">Sidharth Bright Networks is not liable for delays caused by courier partner operations.</div></div>
+        <div class="pi"><div class="pi-n">9</div><div class="pi-t">Declared value of shipment must be accurate; false declaration may lead to claim rejection.</div></div>
+        <div class="pi"><div class="pi-n">10</div><div class="pi-t">All billing records are maintained for audit and dispute resolution purposes.</div></div>
+      </div>
+    </div><!-- policy sec -->
+
+    <!-- SIGNATURE BLOCK -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.42l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.82z"/></svg>
+        </div>
+        Signatures &amp; Acceptance
+      </div>
+      <div class="sig-block">
+        <div class="sig-col">
+          <div class="sig-label">Customer's Signature</div>
+          <div class="sig-line"></div>
+          <div class="sig-sub">(Acceptance of Invoice Terms)</div>
+        </div>
+        <div class="sig-col">
+          <div class="sig-label">Authorized Signatory</div>
+          <div class="sig-line"></div>
+          <div class="sig-company">Sidharth Bright Networks</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /cbody -->
+
+  <div class="cftr">Sidharth Bright Networks · Shipment Invoice Module · Admin Only · System Generated</div>
+</div><!-- /card -->
+</div><!-- /shell -->
+
+<!-- ===== COURIER PICKER MODAL ===== -->
+<div id="courier-modal" role="dialog" aria-modal="true" aria-label="Select Courier Company">
+  <div class="cp-backdrop" onclick="closeCourierPicker()"></div>
+  <div class="cp-sheet">
+    <div class="cp-handle-bar"></div>
+    <div class="cp-head">
+      <div class="cp-head-left">
+        <div class="cp-head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div>
+          <div class="cp-head-title">Select Courier Company</div>
+          <div class="cp-head-sub">India's top logistics partners</div>
+        </div>
+      </div>
+      <button class="cp-close-btn" onclick="closeCourierPicker()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cp-search-wrap">
+      <span class="cp-search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input id="cp-search" class="cp-search-input" type="text" placeholder="Search courier company…" autocomplete="off" oninput="filterCouriers(this.value)" aria-label="Search courier"/>
+      <button class="cp-search-clear" id="cp-clear-btn" onclick="clearCourierSearch()" aria-label="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cp-meta" id="cp-meta">Showing all <strong id="cp-count">0</strong> couriers</div>
+    <div class="cp-list-wrap">
+      <div class="cp-list" id="cp-list" role="listbox"></div>
+      <div class="cp-empty" id="cp-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <span>No courier found for "<em id="cp-empty-term"></em>"</span>
+        <small>Try a different name or abbreviation</small>
+      </div>
+    </div>
+    <div class="cp-footer">
+      <span class="cp-footer-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Verified Partners Only
+      </span>
+      <span class="cp-footer-tip">Tap any courier to auto-fill the form</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== SECURITY: Admin Session Check ===== */
+(function(){
+  if(sessionStorage.getItem('sbn_admin')!=='1'){
+    document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#e8eff8;flex-direction:column;gap:16px"><div style="background:#fff;border-radius:16px;padding:36px 32px;box-shadow:0 16px 48px rgba(11,45,107,.18);text-align:center;max-width:340px"><div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#c01728,#e11d48);display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div><h2 style="font-size:18px;font-weight:700;color:#0b2d6b;margin-bottom:8px">Access Restricted</h2><p style="font-size:13px;color:#5c6a8a;margin-bottom:22px;line-height:1.6">This module requires admin authorization. Please login from the main page first.</p><a href="index.html" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0b2d6b,#1847a8);color:#fff;padding:12px 28px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">Return to Login</a></div></div>';
+    return;
+  }
+})();
+
+/* ===== RIPPLE ===== */
+document.querySelectorAll('.btn').forEach(function(btn){
+  btn.addEventListener('click',function(e){
+    var r=btn.getBoundingClientRect();
+    var d=Math.max(r.width,r.height);
+    var x=e.clientX-r.left-d/2;
+    var y=e.clientY-r.top-d/2;
+    var rip=document.createElement('span');
+    rip.className='ripple';
+    rip.style.cssText='width:'+d+'px;height:'+d+'px;left:'+x+'px;top:'+y+'px';
+    btn.appendChild(rip);
+    setTimeout(function(){rip.remove()},500);
+  });
+});
+
+/* ===== HELPERS ===== */
+function pad(n){return String(n).padStart(2,'0')}
+function dateStr(){var d=new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())}
+function todayLong(){
+  var d=new Date();
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return pad(d.getDate())+' '+M[d.getMonth()]+' '+d.getFullYear();
+}
+function todayShort(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
+function timeStr(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
+function fmtRs(n){return '₹'+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function pdfRs(n){return 'Rs.'+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function randStr(len){return Math.random().toString(36).substr(2,len||4).toUpperCase()}
+
+/* ===== DUE DATE HELPER (+7 days) ===== */
+function dueDateLong(fromDate){
+  var d=fromDate instanceof Date?new Date(fromDate):new Date();
+  d.setDate(d.getDate()+7);
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return pad(d.getDate())+' '+M[d.getMonth()]+' '+d.getFullYear();
+}
+function dueDateShort(){
+  var d=new Date();d.setDate(d.getDate()+7);
+  return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+}
+
+/* ===== INVOICE NUMBER ===== */
+var invoiceSeq=parseInt(sessionStorage.getItem('sbn_si_seq')||String(Math.floor(Math.random()*400)+100));
+var currentInvNo='SI-'+dateStr()+'-'+String(invoiceSeq).padStart(3,'0')+randStr(3);
+
+function updateHeaderInvNo(){
+  document.getElementById('f-invno').value=currentInvNo;
+  document.getElementById('fh-invno').textContent=currentInvNo;
+}
+
+/* ===== CLOCK ===== */
+function tickClock(){
+  document.getElementById('fh-date').textContent=todayLong();
+  document.getElementById('fh-clock').textContent=timeStr()+' IST';
+  /* f-date is a native date picker — do not overwrite it here */
+}
+setInterval(tickClock,1000);
+
+/* ===== DATE INPUT HELPERS ===== */
+/* Convert YYYY-MM-DD (from <input type="date">) to "09 May 2026" display format */
+function dateInputToLong(val){
+  if(!val)return todayLong();
+  var p=val.split('-');
+  var M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return pad(parseInt(p[2]))+' '+M[parseInt(p[1])-1]+' '+p[0];
+}
+/* Convert YYYY-MM-DD to a Date object for due-date arithmetic */
+function dateInputToDate(val){
+  if(!val)return new Date();
+  var p=val.split('-');
+  return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+}
+/* Today as YYYY-MM-DD for seeding the date input */
+function todayISO(){
+  var d=new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+/* ===== TOAST ===== */
+var toastTimer=null;
+function showToast(msg,type){
+  var t=document.getElementById('toast');
+  clearTimeout(toastTimer);
+  t.textContent=msg;
+  t.className=type?'show '+type:'show';
+  toastTimer=setTimeout(function(){t.className=''},3200);
+}
+
+/* ===== GENERATE INVOICE ===== */
+var currentRecord=null;
+function generateInvoice(){
+  var cname=document.getElementById('f-cname').value.trim();
+  var cmob=document.getElementById('f-cmob').value.trim();
+  var awb=document.getElementById('f-awb').value.trim();
+  var total=parseFloat(document.getElementById('f-total').value)||0;
+
+  if(!cname){showToast('Please enter Customer Name','error');document.getElementById('f-cname').focus();return;}
+  if(!awb){showToast('Please enter AWB Number','error');document.getElementById('f-awb').focus();return;}
+  if(total<=0){showToast('Please enter Total Freight Amount','error');document.getElementById('f-total').focus();return;}
+
+  var origin=document.getElementById('f-origin').value.trim()||'—';
+  var dest=document.getElementById('f-dest').value.trim()||'—';
+  var courier=document.getElementById('f-courier').value.trim()||'—';
+  var dweight=document.getElementById('f-dweight').value.trim()||'—';
+  var remarks=document.getElementById('f-remarks').value.trim();
+  var dateVal=document.getElementById('f-date').value;
+  var date=dateInputToLong(dateVal);
+  var dueDate=dueDateLong(dateInputToDate(dateVal));
+
+  currentRecord={
+    invNo:currentInvNo,date:date,dueDate:dueDate,awb:awb,
+    cname:cname,cmob:cmob,origin:origin,dest:dest,
+    courier:courier,dweight:dweight,
+    total:total,remarks:remarks,status:currentStatus,ts:Date.now()
+  };
+
+  invoiceSeq++;
+  sessionStorage.setItem('sbn_si_seq',invoiceSeq);
+
+  var sb=document.getElementById('invoice-success');
+  sb.classList.add('show');
+  document.getElementById('success-sub').textContent=
+    currentInvNo+' · Due: '+dueDate+' · Use the action bar above to Download PDF or Share on WhatsApp.';
+
+  document.getElementById('action-bar').classList.add('show');
+  setTimeout(function(){sb.scrollIntoView({behavior:'smooth',block:'start'})},200);
+  showToast('Invoice generated successfully!','success');
+}
+
+/* ===== WHATSAPP ===== */
+var waMsg='',waNum='';
+function buildWaMsg(){
+  if(!currentRecord)return '';
+  var r=currentRecord;
+  return '🚚 *SBN – SHIPMENT INVOICE*\n\n'
+    +'Hello '+r.cname+',\n\n'
+    +'Your shipment invoice has been generated. Please review the details below:\n\n'
+    +'🔖 Invoice No: '+r.invNo+'\n'
+    +'📦 AWB No: '+r.awb+'\n'
+    +'📅 Invoice Date: '+r.date+'\n'
+    +'⏰ Due Date: '+r.dueDate+'\n\n'
+    +'📍 Origin Pincode: '+r.origin+'\n'
+    +'📍 Destination Pincode: '+r.dest+'\n\n'
+    +'🚛 Courier Company: '+r.courier+'\n'
+    +'⚖️ Parcel Weight: '+r.dweight+' kg\n\n'
+    +'✅ *Total Freight Amount: '+fmtRs(r.total)+'*\n'
+    +'💳 Payment Status: '+(r.status==='paid'?'✅ PAID — Cleared':'⚠️ DUES — Payment Pending')+'\n\n'
+    +(r.remarks?'📝 Note: '+r.remarks+'\n\n':'')
+    +'⚠️ Payment is mandatory within 7 days from invoice generation date. Failure to pay within due period may result in penalty charges of ₹129 + 18% GST.\n\n'
+    +'Please arrange payment at the earliest to avoid further charges.\n\n'
+    +'✅ *Sidharth Bright Networks*\n'
+    +'Supaul, Bihar – 852131\n'
+    +'📞 +91 95087 87946';
+}
+function openWaModal(){
+  if(!currentRecord){showToast('Generate an invoice first','error');return;}
+  var mob=(currentRecord.cmob||'').replace(/[^0-9]/g,'');
+  waMsg=buildWaMsg();waNum=mob;
+  document.getElementById('wa-preview-text').textContent=waMsg;
+  document.getElementById('wa-copied').classList.remove('show');
+  document.getElementById('wa-modal').classList.add('show');
+}
+function closeWaModal(){document.getElementById('wa-modal').classList.remove('show');}
+function copyWaMessage(){
+  if(!waMsg)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(waMsg).then(function(){
+      document.getElementById('wa-copied').classList.add('show');
+      setTimeout(function(){document.getElementById('wa-copied').classList.remove('show')},3000);
+    });
+  }else{
+    var ta=document.createElement('textarea');ta.value=waMsg;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    document.getElementById('wa-copied').classList.add('show');
+    setTimeout(function(){document.getElementById('wa-copied').classList.remove('show')},3000);
+  }
+}
+function openWhatsApp(){
+  if(!waMsg||!waNum)return;
+  window.open('https://wa.me/91'+waNum+'?text='+encodeURIComponent(waMsg),'_blank');
+}
+
+/* ===== BACK NAVIGATION ===== */
+function goBack(){
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('overlay-title').textContent='Navigating';
+  document.getElementById('overlay-sub').textContent='Back to Main…';
+  setTimeout(function(){window.location.href='index.html'},400);
+}
+
+/* ===== PDF GENERATION ===== */
+function downloadPDF(){
+  if(!currentRecord){showToast('Generate an invoice first','error');return;}
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('overlay-title').textContent='Generating PDF';
+  document.getElementById('overlay-sub').textContent='Please wait…';
+  setTimeout(buildPDF,100);
+}
+
+function buildPDF(){
+  try{
+    var r=currentRecord;
+    var jsPDFCtor=window.jspdf&&window.jspdf.jsPDF?window.jspdf.jsPDF:window.jsPDF;
+    var doc=new jsPDFCtor({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+
+    var W=210,H=297;
+    var lm=10,rm=10,cw=W-lm-rm;
+    var footerH=8;
+    var safeBottom=H-footerH-2; /* last safe y before footer zone */
+    var y=0;
+
+    /* ─── primitives ─── */
+    function rnd(r,g,b){doc.setDrawColor(r,g,b);}
+    function fill(r,g,b){doc.setFillColor(r,g,b);}
+    function txt(r,g,b){doc.setTextColor(r,g,b);}
+
+    /* ─── footer — always drawn at absolute bottom of current page ─── */
+    function drawFooter(){
+      var pg=doc.internal.getCurrentPageInfo().pageNumber;
+      var total=doc.internal.getNumberOfPages();
+      fill(8,32,74);doc.rect(0,H-footerH,W,footerH,'F');
+      fill(192,23,40);doc.rect(0,H-footerH,W,1.2,'F');
+      doc.setFont('helvetica','italic');doc.setFontSize(5.5);
+      txt(160,175,210);
+      doc.text('This is a computer generated document and not intended for legal purposes.',lm,H-2.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(5.5);
+      txt(140,160,200);
+      doc.text('Page '+pg+' of '+total+' · Sidharth Bright Networks',W-rm,H-2.5,{align:'right'});
+    }
+
+    /* ─── continuation header for page 2+ ─── */
+    function drawContinuationHeader(){
+      fill(8,32,74);doc.rect(0,0,W,9,'F');
+      fill(192,23,40);doc.rect(0,8.5,W,0.5,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);txt(200,220,255);
+      doc.text('SIDHARTH BRIGHT NETWORKS  ·  SHIPMENT INVOICE',lm,5.8);
+      doc.setFont('helvetica','normal');doc.setFontSize(6);txt(150,180,230);
+      doc.text(r.invNo+' · '+r.date,W-rm,5.8,{align:'right'});
+      y=14;
+    }
+
+    /* ─── page break guard — call before drawing any block of height h ─── */
+    function checkPage(h){
+      if(y+h>safeBottom){
+        drawFooter();
+        doc.addPage();
+        drawContinuationHeader();
+      }
+    }
+
+    /* ─── section heading (5.5mm) ─── */
+    function secHead(label){
+      checkPage(11);
+      fill(240,245,255);doc.rect(lm,y,cw,5.5,'F');
+      rnd(37,99,235);doc.setLineWidth(0.18);doc.rect(lm,y,cw,5.5,'S');
+      fill(11,45,107);doc.rect(lm,y,2.5,5.5,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);
+      txt(11,45,107);
+      doc.text(label.toUpperCase(),lm+5,y+3.8);
+      y+=7.5;
+    }
+
+    /* ─── two-column field ─── */
+    function fieldBlock(label,val,x,w){
+      doc.setFont('helvetica','bold');doc.setFontSize(5.8);
+      txt(110,128,165);
+      doc.text(label.toUpperCase(),x,y+1);
+      rnd(220,230,248);doc.setLineWidth(0.12);
+      doc.line(x,y+8,x+w-1,y+8);
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+      txt(12,22,55);
+      var safe=doc.splitTextToSize(String(val||'—'),w-2);
+      doc.text(safe[0]||'—',x,y+6);
+    }
+
+    /* ══════════════════════════════════════════════
+       PAGE 1 MAIN HEADER (full-width, always page 1)
+    ══════════════════════════════════════════════ */
+    fill(8,32,74);doc.rect(0,0,W,29,'F');
+    fill(15,45,100);doc.circle(W+5,2,20,'F');
+    fill(20,55,115);doc.circle(W+8,26,14,'F');
+    fill(192,23,40);doc.rect(0,27.5,W,1.5,'F');
+    fill(37,99,235);doc.rect(lm,8,18,0.8,'F');
+
+    doc.setFont('helvetica','bold');doc.setFontSize(14);
+    txt(255,255,255);
+    doc.text('Sidharth Bright Networks',lm,8);
+    doc.setFont('helvetica','normal');doc.setFontSize(5.8);
+    txt(160,195,240);
+    doc.text('LOGISTICS & COURIER SERVICES',lm,12.5);
+    doc.setFontSize(6.5);txt(185,210,245);
+    doc.text('Supaul, Bihar - 852131',lm,17);
+    doc.text('+91 9508787946',lm,21);
+
+    doc.setFont('helvetica','bold');doc.setFontSize(5.5);
+    txt(120,155,210);
+    doc.text('SHIPMENT INVOICE',W-rm,6.5,{align:'right'});
+    fill(255,255,255);
+    doc.roundedRect(W-rm-50,7.5,50,6.5,1.5,1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+    txt(8,32,74);
+    doc.text(r.invNo,W-rm-25,11.8,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(6);
+    txt(185,210,245);
+    doc.text('Date: '+r.date,W-rm,17,{align:'right'});
+    doc.text('AWB: '+r.awb,W-rm,21,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setFontSize(5.8);
+    txt(255,180,180);
+    doc.text('Due: '+r.dueDate,W-rm,25,{align:'right'});
+    y=33;
+
+    /* ══════════════════════════════════════════════
+       CUSTOMER & SHIPMENT
+    ══════════════════════════════════════════════ */
+    secHead('Customer & Shipment Details');
+    var c1=lm,c2=lm+cw/2+2,hw=cw/2-4;
+    checkPage(12);fieldBlock('Customer Name',r.cname,c1,hw);fieldBlock('Mobile Number',r.cmob||'—',c2,hw);y+=12;
+    checkPage(12);fieldBlock('Origin Pincode',r.origin,c1,hw);fieldBlock('Destination Pincode',r.dest,c2,hw);y+=12;
+    checkPage(12);fieldBlock('AWB Number',r.awb,c1,hw);fieldBlock('Invoice Date',r.date,c2,hw);y+=12;
+
+    var col3w=(cw-6)/3;
+    checkPage(12);
+    fieldBlock('Courier Company',r.courier,lm,col3w+col3w/2);
+    fieldBlock('Parcel Weight',r.dweight+' kg',lm+(col3w+col3w/2)+4,col3w/2+col3w/2);
+    y+=12;
+
+    /* ══════════════════════════════════════════════
+       DUE DATE BANNER
+    ══════════════════════════════════════════════ */
+    checkPage(9);
+    fill(255,243,243);doc.rect(lm,y,cw,7,'F');
+    rnd(220,100,100);doc.setLineWidth(0.15);doc.rect(lm,y,cw,7,'S');
+    fill(192,23,40);doc.rect(lm,y,2.5,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(5.8);txt(130,30,40);
+    doc.text('PAYMENT DUE WITHIN 7 DAYS',lm+5,y+2.8);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);txt(192,23,40);
+    doc.text(r.dueDate,W-rm-2,y+5.5,{align:'right'});
+    y+=9;
+
+    /* ══════════════════════════════════════════════
+       CHARGES
+    ══════════════════════════════════════════════ */
+    secHead('Invoice Charges & Payment');
+    var amtX=lm+cw-4;
+
+    /* Table header */
+    checkPage(7);
+    fill(11,45,107);doc.rect(lm,y,cw,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);txt(255,255,255);
+    doc.text('DESCRIPTION',lm+6,y+4.8);
+    doc.text('AMOUNT',amtX,y+4.8,{align:'right'});
+    y+=7;
+
+    /* Freight row */
+    checkPage(9);
+    fill(248,251,255);doc.rect(lm,y,cw,9,'F');
+    rnd(210,222,245);doc.setLineWidth(0.15);doc.rect(lm,y,cw,9,'S');
+    doc.setFont('helvetica','normal');doc.setFontSize(8);txt(20,30,65);
+    doc.text('Total Freight Amount',lm+6,y+5.8);
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);txt(11,45,107);
+    doc.text(pdfRs(r.total),amtX,y+5.8,{align:'right'});
+    y+=9;
+
+    /* Amount payable */
+    checkPage(12);
+    fill(11,45,107);doc.rect(lm,y,cw,10,'F');
+    fill(192,23,40);doc.rect(lm,y,3,10,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);txt(200,215,245);
+    doc.text('AMOUNT PAYABLE',lm+6,y+6.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);txt(255,255,255);
+    doc.text(pdfRs(r.total),amtX,y+6.5,{align:'right'});
+    y+=12;
+
+    /* Payment status badge */
+    var isPaid=r.status==='paid';
+    checkPage(12);
+    if(isPaid){
+      fill(240,253,244);doc.rect(lm,y,cw,10,'F');
+      rnd(134,239,172);doc.setLineWidth(0.2);doc.rect(lm,y,cw,10,'S');
+      fill(22,163,74);doc.rect(lm,y,4,10,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);txt(21,128,61);
+      doc.text('✓  PAYMENT STATUS: PAID — AMOUNT RECEIVED & CLEARED',lm+8,y+6.2);
+    }else{
+      fill(255,251,235);doc.rect(lm,y,cw,10,'F');
+      rnd(252,211,77);doc.setLineWidth(0.2);doc.rect(lm,y,cw,10,'S');
+      fill(217,119,6);doc.rect(lm,y,4,10,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);txt(146,64,14);
+      doc.text('!  PAYMENT STATUS: DUES — PAYMENT PENDING FROM CUSTOMER',lm+8,y+6.2);
+    }
+    y+=12;
+
+    /* Payment notice (dues only) */
+    if(!isPaid){
+      var noticeText='Payment is mandatory within 7 days from invoice generation date. Failure to pay within due period may result in penalty charges of Rs.129 + 18% GST.';
+      var noticeLines=doc.splitTextToSize(noticeText,cw-14);
+      var noticeH=4+noticeLines.length*3.4+4;
+      checkPage(noticeH);
+      fill(255,248,240);doc.rect(lm,y,cw,noticeH,'F');
+      rnd(215,100,30);doc.setLineWidth(0.2);doc.rect(lm,y,cw,noticeH,'S');
+      fill(215,100,30);doc.rect(lm,y,2.5,noticeH,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);txt(160,70,10);
+      doc.text('PAYMENT NOTICE',lm+5,y+4);
+      doc.setFont('helvetica','italic');doc.setFontSize(6.5);txt(100,50,10);
+      doc.text(noticeLines,lm+5,y+7.5);
+      y+=noticeH+2;
+    }
+
+    /* Remarks */
+    if(r.remarks){
+      var remLines=doc.splitTextToSize(r.remarks,cw-14);
+      var remH=4+remLines.length*3.4+4;
+      checkPage(remH);
+      fill(240,245,255);doc.rect(lm,y,cw,remH,'F');
+      rnd(200,218,248);doc.setLineWidth(0.15);doc.rect(lm,y,cw,remH,'S');
+      fill(37,99,235);doc.rect(lm,y,2.5,remH,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(6);txt(11,45,107);
+      doc.text('REMARKS',lm+5,y+4);
+      doc.setFont('helvetica','normal');doc.setFontSize(6.5);txt(30,50,100);
+      doc.text(remLines,lm+5,y+7.5);
+      y+=remH+2;
+    }
+
+    /* ══════════════════════════════════════════════
+       POLICY SECTION — 2-column, each row page-break safe
+    ══════════════════════════════════════════════ */
+    secHead('Shipment Invoice & Billing Policy');
+    var policies=[
+      'All invoiced charges are based on actual shipment details provided at the time of booking.',
+      'Freight charges are calculated on declared or actual weight, whichever is higher.',
+      'Handling charges apply for special care, fragile, or oversized shipments.',
+      'GST and applicable taxes are levied as per government regulations and may vary.',
+      'Payment must be completed within 7 days of invoice date to avoid penalty charges.',
+      'All invoices are system-generated and serve as official billing documents.',
+      'Disputes regarding invoice amounts must be raised within 48 hours of receipt.',
+      'SBN is not liable for delays caused by courier partner operations.',
+      'Declared shipment value must be accurate; false declaration may void claims.',
+      'All billing records are maintained for audit and dispute resolution purposes.'
+    ];
+
+    var pColGap=2.5;
+    var pColW=(cw-pColGap)/2;
+    var pCol1=lm;
+    var pCol2=lm+pColW+pColGap;
+    var pTextW=pColW-18;
+    var pPadTop=3,pPadBot=3,pLineH=3.2;
+
+    /* Pass 1: uniform height */
+    var uniformH=0;
+    policies.forEach(function(p){
+      var ln=doc.splitTextToSize(p,pTextW);
+      var h=pPadTop+ln.length*pLineH+pPadBot;
+      if(h>uniformH)uniformH=h;
+    });
+    uniformH=Math.ceil(uniformH);
+    var pRowGap=1.5;
+    var rowH=uniformH+pRowGap;
+
+    /* Pass 2: render row by row, page-break before each row */
+    for(var pi=0;pi<policies.length;pi+=2){
+      checkPage(rowH+2);
+      var py=y;
+
+      /* Draw left card */
+      [0,1].forEach(function(side){
+        var idx=pi+side;
+        if(idx>=policies.length)return;
+        var px=side===0?pCol1:pCol2;
+        var ln=doc.splitTextToSize(policies[idx],pTextW);
+        var rowPair=Math.floor(idx/2);
+        var bgR=rowPair%2===0?245:249;
+        var bgG=rowPair%2===0?248:251;
+        fill(bgR,bgG,255);
+        doc.roundedRect(px,py,pColW,uniformH,1.2,1.2,'F');
+        rnd(210,222,248);doc.setLineWidth(0.15);
+        doc.roundedRect(px,py,pColW,uniformH,1.2,1.2,'S');
+        fill(11,45,107);
+        doc.roundedRect(px,py,2,uniformH,0.8,0.8,'F');
+        var circY=py+uniformH/2;
+        fill(11,45,107);doc.circle(px+7.5,circY,2.5,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(5.5);txt(255,255,255);
+        doc.text(String(idx+1),px+7.5,circY+0.9,{align:'center'});
+        doc.setFont('helvetica','normal');doc.setFontSize(6);txt(25,45,95);
+        doc.text(ln,px+13.5,py+pPadTop+2.5);
+      });
+
+      y+=rowH;
+    }
+    y+=3;
+
+    /* ══════════════════════════════════════════════
+       SIGNATURE BLOCK — keep together (34mm)
+    ══════════════════════════════════════════════ */
+    checkPage(32);
+    y+=4; /* breathing space above */
+
+    /* Outer container */
+    fill(245,248,255);doc.rect(lm,y,cw,26,'F');
+    rnd(210,225,250);doc.setLineWidth(0.2);doc.rect(lm,y,cw,26,'S');
+    fill(11,45,107);doc.rect(lm,y,cw,1.5,'F'); /* top accent */
+
+    /* Section label */
+    doc.setFont('helvetica','bold');doc.setFontSize(6);txt(80,100,155);
+    doc.text('SIGNATURES & ACCEPTANCE',lm+cw/2,y+5,{align:'center'});
+
+    /* Divider between columns */
+    rnd(200,218,248);doc.setLineWidth(0.3);
+    doc.line(lm+cw/2,y+1.5,lm+cw/2,y+26);
+
+    /* Right column tint */
+    fill(235,242,255);doc.rect(lm+cw/2,y+1.5,cw/2,24.5,'F');
+
+    var sig1cx=lm+cw/4;
+    var sig2cx=lm+cw*3/4;
+    var sigLineW=44;
+
+    /* Left: Customer signature line */
+    rnd(170,190,225);doc.setLineWidth(0.7);
+    doc.line(sig1cx-sigLineW/2,y+19,sig1cx+sigLineW/2,y+19);
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);txt(50,70,120);
+    doc.text("CUSTOMER'S SIGNATURE",sig1cx,y+22.5,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(5.5);txt(120,140,180);
+    doc.text('(Acceptance of Invoice Terms)',sig1cx,y+25,{align:'center'});
+
+    /* Right: Authorized signatory line */
+    rnd(170,190,225);doc.setLineWidth(0.7);
+    doc.line(sig2cx-sigLineW/2,y+19,sig2cx+sigLineW/2,y+19);
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);txt(50,70,120);
+    doc.text('AUTHORIZED SIGNATORY',sig2cx,y+22.5,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);txt(11,45,107);
+    doc.text('Sidharth Bright Networks',sig2cx,y+25,{align:'center'});
+    y+=30;
+
+    /* ══════════════════════════════════════════════
+       FOOTER ON ALL PAGES
+    ══════════════════════════════════════════════ */
+    var totalPages=doc.internal.getNumberOfPages();
+    for(var pg=1;pg<=totalPages;pg++){
+      doc.setPage(pg);
+      drawFooter();
+    }
+
+    doc.save('SBN-Invoice-'+r.invNo+'.pdf');
+
+  }catch(e){
+    alert('PDF Error: '+e.message);console.error(e);
+  }finally{
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+/* ===== Close WA modal on backdrop ===== */
+document.getElementById('wa-modal').addEventListener('click',function(e){if(e.target===this)closeWaModal();});
+
+/* ===== PAYMENT STATUS ===== */
+var currentStatus='dues';
+function setStatus(s){
+  currentStatus=s;
+  document.getElementById('st-dues').classList.toggle('active',s==='dues');
+  document.getElementById('st-paid').classList.toggle('active',s==='paid');
+  document.getElementById('status-dues-stamp').classList.toggle('show',s==='dues');
+  document.getElementById('status-paid-stamp').classList.toggle('show',s==='paid');
+}
+
+/* ===== COURIER PICKER ===== */
+var COURIER_DB=[
+  /* ── National Leaders ── */
+  {name:'Delhivery',tag:'Pan-India · Express & Surface',cat:'National Leaders',color:'#6366f1',bg:'#eef2ff'},
+  {name:'Blue Dart Express',tag:'Premium Air Express · DHL Partner',cat:'National Leaders',color:'#0284c7',bg:'#e0f2fe'},
+  {name:'DTDC Courier',tag:'Pan-India Network · Economy & Express',cat:'National Leaders',color:'#d97706',bg:'#fffbeb'},
+  {name:'Ecom Express',tag:'E-commerce Specialist · Last Mile',cat:'National Leaders',color:'#16a34a',bg:'#f0fdf4'},
+  {name:'XpressBees',tag:'E-commerce Logistics · Same-Day',cat:'National Leaders',color:'#7c3aed',bg:'#f5f3ff'},
+  {name:'Ekart Logistics',tag:'Flipkart Network · B2C Delivery',cat:'National Leaders',color:'#ea580c',bg:'#fff7ed'},
+  {name:'Amazon Logistics',tag:'Amazon Fulfilment · Prime Delivery',cat:'National Leaders',color:'#0ea5e9',bg:'#e0f2fe'},
+  {name:'Shadowfax',tag:'Hyperlocal & E-commerce · Gig Delivery',cat:'National Leaders',color:'#0f172a',bg:'#f1f5f9'},
+  {name:'Shiprocket',tag:'Multi-Carrier Platform · SME Shipping',cat:'National Leaders',color:'#e11d48',bg:'#fff1f2'},
+  {name:'Pickrr',tag:'AI-Powered Logistics · Pan-India',cat:'National Leaders',color:'#0d9488',bg:'#f0fdfa'},
+  /* ── Express & Air ── */
+  {name:'FedEx India',tag:'International Express · Time-Critical',cat:'Express & Air',color:'#7c3aed',bg:'#faf5ff'},
+  {name:'DHL Express',tag:'International Express · 220+ Countries',cat:'Express & Air',color:'#ca8a04',bg:'#fefce8'},
+  {name:'UPS India',tag:'Global Logistics · B2B Express',cat:'Express & Air',color:'#92400e',bg:'#fef3c7'},
+  {name:'TNT India',tag:'Road & Air Express · FedEx Group',cat:'Express & Air',color:'#ea580c',bg:'#fff7ed'},
+  {name:'Aramex India',tag:'International Courier · Middle East',cat:'Express & Air',color:'#b45309',bg:'#fffbeb'},
+  {name:'Airspeed',tag:'Air Cargo · Time-Sensitive',cat:'Express & Air',color:'#0369a1',bg:'#f0f9ff'},
+  /* ── Govt & Semi-Govt ── */
+  {name:'India Post Speed Post',tag:'Government · Domestic & International',cat:'Govt & Semi-Govt',color:'#b91c1c',bg:'#fef2f2'},
+  {name:'India Post Parcel',tag:'Government · Economy Surface',cat:'Govt & Semi-Govt',color:'#dc2626',bg:'#fef2f2'},
+  /* ── Regional & Specialized ── */
+  {name:'Gati-KWE',tag:'Surface Freight · B2B Specialist',cat:'Regional & Specialized',color:'#0f766e',bg:'#f0fdfa'},
+  {name:'Mahindra Logistics',tag:'3PL · Integrated Supply Chain',cat:'Regional & Specialized',color:'#1d4ed8',bg:'#eff6ff'},
+  {name:'TCI Express',tag:'Express Surface · Business Cargo',cat:'Regional & Specialized',color:'#b45309',bg:'#fffbeb'},
+  {name:'Safexpress',tag:'Express Distribution · Retail Chains',cat:'Regional & Specialized',color:'#7c2d12',bg:'#fff7ed'},
+  {name:'Rivigo',tag:'Relay Trucking · Cold Chain',cat:'Regional & Specialized',color:'#15803d',bg:'#f0fdf4'},
+  {name:'V-Trans',tag:'Surface Transport · Western India',cat:'Regional & Specialized',color:'#1e40af',bg:'#eff6ff'},
+  {name:'VRL Logistics',tag:'Full-Truck Load · South India',cat:'Regional & Specialized',color:'#9a3412',bg:'#fff7ed'},
+  {name:'Continental Carriers',tag:'Surface Freight · North India',cat:'Regional & Specialized',color:'#0e7490',bg:'#ecfeff'},
+  {name:'Dotzot',tag:'Time-Definite Delivery · Tier 2 & 3',cat:'Regional & Specialized',color:'#6d28d9',bg:'#f5f3ff'},
+  {name:'Spoton Logistics',tag:'E-commerce Returns · B2C',cat:'Regional & Specialized',color:'#0284c7',bg:'#f0f9ff'},
+  {name:'Pidge',tag:'Hyperlocal Same-Day · Urban',cat:'Regional & Specialized',color:'#c026d3',bg:'#fdf4ff'},
+  {name:'Dunzo Business',tag:'Hyperlocal B2B · Last Mile',cat:'Regional & Specialized',color:'#16a34a',bg:'#f0fdf4'},
+  {name:'Porter Logistics',tag:'Intra-City Freight · Mini Trucks',cat:'Regional & Specialized',color:'#0f172a',bg:'#f8fafc'},
+  {name:'BlackBuck',tag:'Trucking Marketplace · FTL & PTL',cat:'Regional & Specialized',color:'#1d4ed8',bg:'#eff6ff'},
+  {name:'LoadShare Networks',tag:'Last Mile · Tech-Enabled',cat:'Regional & Specialized',color:'#7c3aed',bg:'#f5f3ff'},
+  {name:'NimbusPost',tag:'Multi-Carrier Aggregator · SMEs',cat:'Regional & Specialized',color:'#0d9488',bg:'#f0fdfa'},
+  {name:'Shyplite',tag:'Shipping Aggregator · API-First',cat:'Regional & Specialized',color:'#0369a1',bg:'#f0f9ff'},
+  {name:'iThink Logistics',tag:'E-commerce Shipping · Marketplace',cat:'Regional & Specialized',color:'#7c2d12',bg:'#fff7ed'},
+  {name:'Smartr Logistics',tag:'Nexus of DTDC · Express B2C',cat:'Regional & Specialized',color:'#d97706',bg:'#fffbeb'},
+  {name:'Movin',tag:'Mahindra Logistics Consumer · B2C',cat:'Regional & Specialized',color:'#1d4ed8',bg:'#eff6ff'},
+  {name:'Other / Custom',tag:'Manual entry — specify in remarks',cat:'Other',color:'#64748b',bg:'#f8fafc'},
+];
+
+var cpOpen=false;
+var cpSelected='';
+var cpFiltered=COURIER_DB;
+
+function openCourierPicker(){
+  var modal=document.getElementById('courier-modal');
+  var inp=document.getElementById('cp-search');
+  cpSelected=document.getElementById('f-courier').value;
+  modal.classList.add('open');
+  document.querySelector('.courier-trigger-wrap') && document.querySelector('.courier-trigger-wrap').classList.add('courier-modal-open');
+  document.body.style.overflow='hidden';
+  cpOpen=true;
+  setTimeout(function(){inp.focus();},320);
+  renderCourierList(COURIER_DB,'');
+  document.getElementById('cp-count').textContent=COURIER_DB.length;
+}
+
+function closeCourierPicker(){
+  var modal=document.getElementById('courier-modal');
+  modal.classList.remove('open');
+  document.querySelector('.courier-trigger-wrap') && document.querySelector('.courier-trigger-wrap').classList.remove('courier-modal-open');
+  document.body.style.overflow='';
+  cpOpen=false;
+  /* Reset search */
+  var inp=document.getElementById('cp-search');
+  inp.value='';
+  document.getElementById('cp-clear-btn').classList.remove('visible');
+}
+
+function clearCourierSearch(){
+  var inp=document.getElementById('cp-search');
+  inp.value='';
+  inp.focus();
+  document.getElementById('cp-clear-btn').classList.remove('visible');
+  filterCouriers('');
+}
+
+function escapeRx(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+
+function highlightMatch(text,query){
+  if(!query)return text;
+  var rx=new RegExp('('+escapeRx(query)+')','gi');
+  return text.replace(rx,'<mark>$1</mark>');
+}
+
+function filterCouriers(q){
+  q=q.trim();
+  document.getElementById('cp-clear-btn').classList.toggle('visible',q.length>0);
+  var results=q
+    ? COURIER_DB.filter(function(c){
+        return c.name.toLowerCase().indexOf(q.toLowerCase())>-1
+          || c.tag.toLowerCase().indexOf(q.toLowerCase())>-1
+          || c.cat.toLowerCase().indexOf(q.toLowerCase())>-1;
+      })
+    : COURIER_DB;
+  cpFiltered=results;
+  renderCourierList(results,q);
+  document.getElementById('cp-count').textContent=results.length;
+  document.getElementById('cp-empty-term').textContent=q;
+}
+
+function getInitials(name){
+  return name.split(' ').slice(0,2).map(function(w){return w[0]}).join('').toUpperCase();
+}
+
+function renderCourierList(list,q){
+  var container=document.getElementById('cp-list');
+  var empty=document.getElementById('cp-empty');
+  if(list.length===0){
+    container.innerHTML='';
+    empty.classList.add('show');
+    return;
+  }
+  empty.classList.remove('show');
+
+  /* Group by category */
+  var cats={};
+  list.forEach(function(c){
+    if(!cats[c.cat])cats[c.cat]=[];
+    cats[c.cat].push(c);
+  });
+
+  var html='';
+  Object.keys(cats).forEach(function(cat){
+    /* Only show category label when not filtering */
+    if(!q){
+      html+='<div class="cp-divider">'+cat+'</div>';
+    }
+    cats[cat].forEach(function(c){
+      var initials=getInitials(c.name);
+      var isSelected=(c.name===cpSelected);
+      html+='<div class="cp-item'+(isSelected?' selected':'')+'" role="option" aria-selected="'+(isSelected?'true':'false')+'" tabindex="0" onclick="selectCourier(\''+c.name.replace(/'/g,"\\'")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')selectCourier(\''+c.name.replace(/'/g,"\\'")+'\')">'+
+        '<div class="cp-item-logo" style="background:'+c.bg+';color:'+c.color+'">'+initials+'</div>'+
+        '<div class="cp-item-info">'+
+          '<div class="cp-item-name">'+highlightMatch(c.name,q)+'</div>'+
+          '<div class="cp-item-tag">'+c.tag+'</div>'+
+        '</div>'+
+        '<div class="cp-item-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>'+
+      '</div>';
+    });
+  });
+  container.innerHTML=html;
+
+  /* Scroll selected item into view */
+  if(cpSelected){
+    requestAnimationFrame(function(){
+      var sel=container.querySelector('.cp-item.selected');
+      if(sel)sel.scrollIntoView({block:'nearest'});
+    });
+  }
+}
+
+function selectCourier(name){
+  cpSelected=name;
+  var field=document.getElementById('f-courier');
+  field.value=name;
+  field.classList.add('has-value');
+  /* tiny ripple feedback */
+  field.style.transition='box-shadow .1s';
+  field.style.boxShadow='0 0 0 4px rgba(37,99,235,.22)';
+  setTimeout(function(){field.style.boxShadow='';},320);
+  closeCourierPicker();
+}
+
+/* Keyboard: Escape closes picker */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&cpOpen)closeCourierPicker();
+});
+
+/* ===== INIT ===== */
+function init(){
+  tickClock();
+  updateHeaderInvNo();
+  document.getElementById('f-date').value=todayISO();
+}
+init();
+</script>
+</body>
+</html>
