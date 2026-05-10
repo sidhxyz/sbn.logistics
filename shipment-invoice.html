@@ -1445,8 +1445,8 @@ function processOCRText(text){
      Preferred near weight-context label, fallback scan.
   */
   var WEIGHT_KEY_RX = /\b(?:weight|wt\.?|actual[\s\-]?wt\.?|dead[\s\-]?wt\.?|charged[\s\-]?wt\.?|parcel[\s\-]?wt\.?|item[\s\-]?weight)\b/i;
-  var WT_KG_RX = /(\d+(?:\.\d+)?)\s*(?:kgs?)\b/i;
-  var WT_GM_RX = /(\d+(?:\.\d+)?)\s*(?:grams?|gms?)\b/i;
+  var WT_KG_RX = /(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilogram|kilograms)\b/i;
+  var WT_GM_RX = /(\d+(?:\.\d+)?)\s*(?:g|gm|gms|gram|grams)\b/i;
   var foundWeight = false;
 
   /* Pass 1: near weight-context label */
