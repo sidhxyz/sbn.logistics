@@ -1508,6 +1508,1602 @@ function processOCRText(text){
   if(/\bpaid\b|\bcleared\b|\breceived\b/.test(flatLower))       ocrExtracted.status = 'paid';
   else if(/\bdues?\b|\bpending\b|\bunpaid\b/.test(flatLower))   ocrExtracted.status = 'dues';
 
+  /* ══ STEP 10b: DATE ══
+     Detects dates in common formats: DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY,
+     YYYY-MM-DD, near keywords like "Date:", "Invoice Date:", "Order Date:", etc.
+     Stores as YYYY-MM-DD (native date input format).
+  */
+  var DATE_KEY_RX = /\b(?:invoice[\s\-]?date|order[\s\-]?date|booking[\s\-]?date|shipment[\s\-]?date|dispatch[\s\-]?date|date[\s\-]?of[\s\-]?(?:invoice|order|shipment|dispatch|booking)|bill[\s\-]?date|date)\b/i;
+  var MONTHS_MAP = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12,
+    january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  var foundDate = false;
+
+  function parseDateToISO(str){
+    str = str.trim();
+    var m, dd, mm, yyyy, mkey;
+    /* DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY */
+    m = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if(m){ dd=parseInt(m[1]); mm=parseInt(m[2]); yyyy=parseInt(m[3]);
+      if(mm>=1&&mm<=12&&dd>=1&&dd<=31) return yyyy+'-'+(mm<10?'0'+mm:''+mm)+'-'+(dd<10?'0'+dd:''+dd); }
+    /* YYYY-MM-DD or YYYY/MM/DD */
+    m = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+    if(m){ yyyy=parseInt(m[1]); mm=parseInt(m[2]); dd=parseInt(m[3]);
+      if(mm>=1&&mm<=12&&dd>=1&&dd<=31) return yyyy+'-'+(mm<10?'0'+mm:''+mm)+'-'+(dd<10?'0'+dd:''+dd); }
+    /* DD MMM YYYY or DD MMMM YYYY */
+    m = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+    if(m){ dd=parseInt(m[1]); mkey=m[2].toLowerCase(); yyyy=parseInt(m[3]);
+      mm=MONTHS_MAP[mkey]||MONTHS_MAP[mkey.slice(0,3)];
+      if(mm&&dd>=1&&dd<=31) return yyyy+'-'+(mm<10?'0'+mm:''+mm)+'-'+(dd<10?'0'+dd:''+dd); }
+    /* MMM DD, YYYY */
+    m = str.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/);
+    if(m){ mkey=m[1].toLowerCase(); dd=parseInt(m[2]); yyyy=parseInt(m[3]);
+      mm=MONTHS_MAP[mkey]||MONTHS_MAP[mkey.slice(0,3)];
+      if(mm&&dd>=1&&dd<=31) return yyyy+'-'+(mm<10?'0'+mm:''+mm)+'-'+(dd<10?'0'+dd:''+dd); }
+    return null;
+  }
+
+  /* Pass 1: near date keyword — same line or next 1-2 lines */
+  lines.forEach(function(line, i){
+    if(foundDate) return;
+    if(DATE_KEY_RX.test(line)){
+      var inline = line.replace(DATE_KEY_RX,'').replace(/^[\s:\-]+/,'').trim();
+      var iso = parseDateToISO(inline);
+      if(iso){ ocrExtracted.date = iso; foundDate = true; return; }
+      for(var j=i+1; j<=Math.min(i+2, lines.length-1); j++){
+        iso = parseDateToISO(lines[j].trim());
+        if(iso){ ocrExtracted.date = iso; foundDate = true; break; }
+      }
+    }
+  });
+
+  /* Pass 2: scan all lines for any date-like pattern */
+  if(!foundDate){
+    lines.forEach(function(line){
+      if(foundDate) return;
+      var dm, iso;
+      dm = line.match(/\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})\b/);
+      if(dm){ iso=parseDateToISO(dm[0]); if(iso){ ocrExtracted.date=iso; foundDate=true; return; } }
+      dm = line.match(/\b(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})\b/);
+      if(dm){ iso=parseDateToISO(dm[0]); if(iso){ ocrExtracted.date=iso; foundDate=true; return; } }
+      dm = line.match(/\b(\d{1,2})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b/i);
+      if(dm){ iso=parseDateToISO(dm[0]); if(iso){ ocrExtracted.date=iso; foundDate=true; } }
+    });
+  }
+
+  /* ══ STEP 11: VALIDATION LAYER ══ */
+
+  /* AWB cannot equal mobile number */
+  if(ocrExtracted.awb && ocrExtracted.mobile){
+    var mobDig = ocrExtracted.mobile.replace(/\D/g,'').replace(/^91/,'');
+    if(ocrExtracted.awb === mobDig || ocrExtracted.awb === '91'+mobDig)
+      delete ocrExtracted.awb;
+  }
+
+  /* Pincode: exactly 6 valid digits */
+  if(ocrExtracted.originPin && !/^[1-9]\d{5}$/.test(ocrExtracted.originPin))
+    delete ocrExtracted.originPin;
+  if(ocrExtracted.destPin && !/^[1-9]\d{5}$/.test(ocrExtracted.destPin))
+    delete ocrExtracted.destPin;
+
+  /* Origin and destination cannot be identical */
+  if(ocrExtracted.originPin && ocrExtracted.destPin &&
+     ocrExtracted.originPin === ocrExtracted.destPin)
+    delete ocrExtracted.destPin;
+
+  /* Mobile: 10 valid digits */
+  if(ocrExtracted.mobile){
+    var d = ocrExtracted.mobile.replace(/\D/g,'');
+    if(!/^(91)?[6-9]\d{9}$/.test(d)) delete ocrExtracted.mobile;
+  }
+
+  /* Weight: must be positive */
+  if(ocrExtracted.weight && parseFloat(ocrExtracted.weight) <= 0)
+    delete ocrExtracted.weight;
+
+  /* AWB: minimum 6 chars, not a noise word */
+  if(ocrExtracted.awb &&
+     (ocrExtracted.awb.length < 6 || /^(NO|NUM|NUMBER|NULL|NONE|NA|N\/A)$/i.test(ocrExtracted.awb)))
+    delete ocrExtracted.awb;
+
+  /* ══ STEP 12: Render results ══ */
+  renderOCRResults();
+
+  /* Show raw text toggle */
+  document.getElementById('ocr-raw-text').textContent = t;
+  document.getElementById('ocr-raw-toggle').style.display = 'flex';
+
+  document.getElementById('btn-ocr-extract').disabled = false;
+}
+
+function titleCase(s){
+  return s.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); });
+}
+
+function renderOCRResults(){
+  var FIELD_LABELS = {
+    name:      'Customer Name',
+    mobile:    'Mobile Number',
+    originPin: 'Origin Pincode',
+    destPin:   'Dest. Pincode',
+    awb:       'AWB Number',
+    courier:   'Courier Co.',
+    weight:    'Weight (kg)',
+    amount:    'Freight Amount',
+    status:    'Payment Status',
+    date:      'Invoice Date'
+  };
+
+  var keys = Object.keys(ocrExtracted);
+  var count = keys.length;
+
+  document.getElementById('ocr-ext-count').textContent = count + ' field' + (count!==1?'s':'');
+
+  var html = '';
+  keys.forEach(function(k){
+    html += '<div class="ocr-ext-row">'
+      + '<span class="ocr-ext-key">' + (FIELD_LABELS[k]||k) + '</span>'
+      + '<span class="ocr-ext-val">' + escapeHtml(String(ocrExtracted[k])) + '</span>'
+      + '</div>';
+  });
+
+  document.getElementById('ocr-ext-list').innerHTML = html;
+  document.getElementById('ocr-extracted').classList.toggle('show', count > 0);
+
+  if(count > 0){
+    document.getElementById('btn-ocr-autofill').style.display = 'flex';
+  } else {
+    showOCRError('No recognisable shipment data found. Try a clearer image or higher resolution screenshot.');
+  }
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Auto-fill ── */
+function doAutoFill(){
+  var d = ocrExtracted;
+  var filled = [];
+
+  function fillField(id, val, label){
+    if(!val) return;
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.value = val;
+    el.classList.add('field-filled');
+    setTimeout(function(){ el.classList.remove('field-filled'); }, 900);
+    filled.push(label);
+  }
+
+  if(d.name)      fillField('f-cname',   d.name,      'Customer Name');
+  if(d.mobile)    fillField('f-cmob',    d.mobile,    'Mobile');
+  if(d.originPin) fillField('f-origin',  d.originPin, 'Origin PIN');
+  if(d.destPin)   fillField('f-dest',    d.destPin,   'Dest. PIN');
+  if(d.awb)       fillField('f-awb',     d.awb,       'AWB');
+  if(d.weight)    fillField('f-dweight', d.weight,    'Weight');
+  if(d.amount)    fillField('f-total',   d.amount,    'Amount');
+
+  /* Date — native date input expects YYYY-MM-DD */
+  if(d.date){
+    var df = document.getElementById('f-date');
+    if(df){
+      df.value = d.date;
+      df.classList.add('field-filled');
+      setTimeout(function(){ df.classList.remove('field-filled'); }, 900);
+      filled.push('Date');:rgba(37,99,235,.25);border:1px solid rgba(100,150,255,.35);border-radius:12px;padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd;margin-top:8px}
+.admin-badge-dot{width:5px;height:5px;border-radius:50%;background:#60a5fa;animation:blink 1.5s ease-in-out infinite}
+
+.red-strip{height:4px;background:linear-gradient(90deg,var(--red),#f43f5e,var(--red));background-size:200% 100%;animation:stripFlow 4s ease-in-out infinite}
+@keyframes stripFlow{0%,100%{background-position:0% 0%}50%{background-position:100% 0%}}
+
+/* ===== BODY ===== */
+.cbody{padding:32px 34px}
+.sec{margin-bottom:32px;animation:secIn .4s cubic-bezier(.22,1,.36,1) both}
+.sec:nth-child(1){animation-delay:.05s}.sec:nth-child(2){animation-delay:.1s}.sec:nth-child(3){animation-delay:.15s}
+.sec:nth-child(4){animation-delay:.2s}.sec:nth-child(5){animation-delay:.25s}.sec:nth-child(6){animation-delay:.3s}
+@keyframes secIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.sec-ttl{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue2);padding-bottom:12px;margin-bottom:20px;display:flex;align-items:center;gap:8px;border-bottom:1.5px solid transparent;border-image:linear-gradient(90deg,var(--blue-lt),transparent) 1}
+.sec-ttl-dot{width:18px;height:18px;border-radius:5px;min-width:18px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);display:flex;align-items:center;justify-content:center}
+.sec-ttl-dot svg{width:9px;height:9px;fill:#fff}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.fl{display:flex;flex-direction:column;gap:8px}
+.fl label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:2px}
+.fl input,.fl select,.fl textarea{font-family:var(--font);font-size:13.5px;padding:13px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);width:100%;outline:none;transition:border-color .18s,background .18s,box-shadow .18s,transform .15s}
+.fl textarea{resize:vertical;min-height:100px;line-height:1.6}
+.fl input:hover,.fl select:hover,.fl textarea:hover{border-color:var(--border2);background:#edf2fb}
+.fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.1);transform:translateY(-1px)}
+.fl input[readonly]{background:linear-gradient(135deg,#eef2fb,#e8f0fe);color:var(--blue2);cursor:default;font-family:var(--mono);font-size:13px;font-weight:500;border-color:#c8d6f0;padding:13px 16px}
+#f-date{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--blue);cursor:pointer}
+#f-date::-webkit-calendar-picker-indicator{opacity:.55;cursor:pointer;filter:invert(18%) sepia(80%) saturate(600%) hue-rotate(200deg)}
+
+/* ===== AMOUNT FIELDS ===== */
+.fl.amount-field input{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--blue);background:linear-gradient(135deg,#eef4ff,#e8f0fe);padding:14px 16px}
+.fl.amount-field input:focus{background:#fff}
+.fl.total-field input{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;font-family:var(--mono);font-size:18px;font-weight:700;border-color:transparent;box-shadow:0 4px 16px rgba(11,45,107,.3);padding:16px 18px}
+.fl.total-field input:focus{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);box-shadow:0 0 0 4px rgba(37,99,235,.2),0 4px 16px rgba(11,45,107,.3);transform:none}
+.fl.total-field input::placeholder{color:rgba(255,255,255,.5)}
+
+/* ===== COURIER PLAIN INPUT ===== */
+/* No dropdown — courier is a standard free-text field */
+
+/* ===== PAYMENT STATUS TOGGLE ===== */
+.status-toggle{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;width:100%}
+.st-btn{
+  flex:1;padding:13px 16px;border:none;cursor:pointer;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--surface);color:var(--muted);letter-spacing:.01em;
+}
+.st-btn svg{width:15px;height:15px;flex-shrink:0}
+.st-btn:first-child{border-right:1px solid var(--border)}
+.st-btn.active.st-dues{background:var(--amber-lt);color:var(--amber);box-shadow:inset 0 2px 8px rgba(217,119,6,.08)}
+.st-btn.active.st-paid{background:var(--green-lt);color:var(--green);box-shadow:inset 0 2px 8px rgba(22,163,74,.08)}
+.st-btn:not(.active):hover{background:var(--blue-lllt);color:var(--blue2)}
+.status-paid-stamp{
+  display:none;background:linear-gradient(135deg,var(--green-lt),#dcfce7);
+  border:1.5px solid #86efac;border-left:4px solid var(--green);
+  border-radius:10px;padding:10px 16px;
+  font-size:12px;font-weight:700;color:var(--green);
+  align-items:center;gap:8px;margin-top:10px;
+}
+.status-paid-stamp.show{display:flex}
+.status-dues-stamp{
+  display:none;background:var(--amber-lt);
+  border:1.5px solid #fcd34d;border-left:4px solid var(--amber);
+  border-radius:10px;padding:10px 16px;
+  font-size:12px;font-weight:700;color:var(--amber);
+  align-items:center;gap:8px;margin-top:10px;
+}
+.status-dues-stamp.show{display:flex}
+
+/* ===== GENERATE BUTTON ===== */
+.generate-btn-wrap{text-align:center;margin:28px 0 12px}
+.btn-generate{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;font-size:14px;padding:14px 36px;border-radius:12px;box-shadow:0 6px 20px rgba(11,45,107,.35);font-weight:800;letter-spacing:.04em}
+.btn-generate:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(11,45,107,.45)}
+.btn-generate svg{width:18px;height:18px}
+
+/* ===== POLICY SECTION ===== */
+.policy-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pi{display:flex;align-items:flex-start;gap:12px;background:linear-gradient(135deg,var(--blue-lllt),#f8faff);border:1px solid var(--blue-lt);border-radius:10px;padding:14px 16px;transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.pi:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(37,99,235,.1);border-color:var(--blue3)}
+.pi-n{width:22px;height:22px;min-width:22px;border-radius:6px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue3) 100%);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;box-shadow:0 2px 6px rgba(11,45,107,.25)}
+.pi-t{font-size:12px;color:#2a3a60;line-height:1.55;font-weight:500}
+
+/* ===== INVOICE SUCCESS BANNER ===== */
+#invoice-success{display:none;margin-bottom:26px;animation:secIn .45s cubic-bezier(.22,1,.36,1) both}
+#invoice-success.show{display:block}
+.success-banner{background:linear-gradient(135deg,var(--green-lt),#f0fdf4);border:1.5px solid #86efac;border-left:4px solid var(--green);border-radius:14px;padding:22px 26px;display:flex;align-items:center;gap:16px}
+.success-icon{width:44px;height:44px;min-width:44px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#15803d);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.success-icon svg{width:22px;height:22px;fill:#fff}
+.success-text h4{font-family:var(--display);font-size:14px;font-weight:700;color:#15803d;margin-bottom:3px}
+.success-text p{font-size:11.5px;color:#166534;opacity:.8;line-height:1.5}
+
+/* ===== OVERLAY ===== */
+#overlay{display:none;position:fixed;inset:0;background:rgba(6,29,66,.65);backdrop-filter:blur(8px);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+#overlay.show{display:flex}
+.spin-wrap{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+.spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay p{color:#fff;font-size:14px;font-weight:600;font-family:var(--display);letter-spacing:.05em}
+#overlay span{color:rgba(255,255,255,.5);font-size:11px}
+
+/* ===== TOAST ===== */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--blue);color:#fff;padding:11px 22px;border-radius:10px;font-size:12.5px;font-weight:700;z-index:9999;opacity:0;transition:all .35s cubic-bezier(.22,1,.36,1);pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(11,45,107,.4)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(--green)}
+#toast.error{background:var(--red)}
+
+
+/* ===== OCR MODULE ===== */
+#ocr-fab{position:fixed;bottom:24px;right:24px;z-index:500;background:linear-gradient(135deg,#0b2d6b 0%,#1847a8 100%);color:#fff;border:none;border-radius:18px;padding:13px 20px;font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 28px rgba(11,45,107,.45);display:flex;align-items:center;gap:9px;transition:all .25s cubic-bezier(.34,1.56,.64,1);letter-spacing:.02em}
+#ocr-fab:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 14px 36px rgba(11,45,107,.55)}
+#ocr-fab:active{transform:scale(.96)}
+#ocr-fab svg{width:18px;height:18px;flex-shrink:0}
+#ocr-fab .fab-pulse{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:blink 1.8s ease-in-out infinite;flex-shrink:0}
+
+#ocr-overlay{display:none;position:fixed;inset:0;background:rgba(6,29,66,.7);backdrop-filter:blur(12px);z-index:600;align-items:flex-end;justify-content:center}
+#ocr-overlay.show{display:flex;animation:ovrIn .2s ease both}
+@keyframes ovrIn{from{opacity:0}to{opacity:1}}
+
+@media(min-width:600px){
+  #ocr-overlay{align-items:center}
+  .ocr-sheet{border-radius:22px!important;max-height:90vh!important;bottom:auto!important}
+}
+
+.ocr-sheet{
+  background:#fff;width:100%;max-width:520px;border-radius:24px 24px 0 0;
+  max-height:92vh;overflow-y:auto;overflow-x:hidden;
+  animation:sheetUp .32s cubic-bezier(.22,1,.36,1) both;
+  box-shadow:0 -8px 48px rgba(11,45,107,.28);
+}
+@keyframes sheetUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+.ocr-handle{width:44px;height:5px;background:#e2e8f0;border-radius:99px;margin:14px auto 0;display:block}
+
+.ocr-hdr{padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--border)}
+.ocr-hdr-left{display:flex;align-items:center;gap:12px}
+.ocr-hdr-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(11,45,107,.28);flex-shrink:0}
+.ocr-hdr-icon svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ocr-hdr-ttl{font-family:var(--display);font-size:15px;font-weight:800;color:var(--blue)}
+.ocr-hdr-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ocr-close-btn{width:32px;height:32px;border-radius:8px;background:var(--surface);border:1.5px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s}
+.ocr-close-btn:hover{background:var(--red-lt);border-color:var(--red)}
+.ocr-close-btn svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round}
+.ocr-close-btn:hover svg{stroke:var(--red)}
+
+.ocr-body{padding:18px 22px}
+
+/* Source Tabs */
+.ocr-tabs{display:flex;gap:8px;margin-bottom:18px}
+.ocr-tab{flex:1;padding:10px 8px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:7px;transition:all .18s}
+.ocr-tab svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.ocr-tab.active{background:var(--blue-lt);border-color:var(--blue3);color:var(--blue2)}
+.ocr-tab:hover:not(.active){background:var(--blue-lllt);border-color:var(--border2)}
+
+/* Upload Zone */
+.ocr-drop-zone{border:2.5px dashed var(--border2);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .22s;background:var(--surface);position:relative;overflow:hidden}
+.ocr-drop-zone.drag-over{border-color:var(--blue3);background:var(--blue-lllt);transform:scale(1.01)}
+.ocr-drop-zone input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.ocr-dz-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--blue-lt),#dce8fc);border:1.5px solid var(--border);margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
+.ocr-dz-icon svg{width:26px;height:26px;fill:none;stroke:var(--blue2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ocr-dz-ttl{font-size:13.5px;font-weight:700;color:var(--blue);margin-bottom:4px}
+.ocr-dz-sub{font-size:11.5px;color:var(--muted);line-height:1.5}
+.ocr-dz-formats{display:inline-flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+.ocr-dz-fmt{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+
+/* Camera tab */
+.ocr-camera-wrap{display:none}
+.ocr-camera-wrap.show{display:block}
+.ocr-cam-btn{width:100%;padding:16px;border:2.5px dashed var(--border2);border-radius:14px;background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13.5px;font-weight:700;color:var(--blue2);display:flex;align-items:center;justify-content:center;gap:10px;transition:all .22s;position:relative}
+.ocr-cam-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.ocr-cam-btn:hover{border-color:var(--blue3);background:var(--blue-lllt)}
+.ocr-cam-btn svg{width:22px;height:22px;fill:none;stroke:var(--blue2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ocr-cam-tip{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.55}
+
+/* Preview */
+.ocr-preview{display:none;margin-top:14px;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);position:relative;background:#f8faff}
+.ocr-preview.show{display:block}
+.ocr-preview img{width:100%;max-height:180px;object-fit:contain;display:block}
+.ocr-preview-bar{background:var(--surface);border-top:1.5px solid var(--border);padding:8px 12px;display:flex;align-items:center;justify-content:space-between}
+.ocr-preview-name{font-size:11px;font-weight:700;color:var(--blue2);max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ocr-preview-rm{background:var(--red-lt);border:1.5px solid #fca5a5;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .18s}
+.ocr-preview-rm:hover{background:var(--red);color:#fff}
+.ocr-preview-rm svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* Progress */
+.ocr-progress{display:none;margin-top:16px;background:var(--blue-lllt);border:1.5px solid var(--blue-lt);border-radius:12px;padding:14px 16px}
+.ocr-progress.show{display:block}
+.ocr-prog-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ocr-prog-label{font-size:12px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:8px}
+.ocr-prog-label .spin-sm{width:16px;height:16px;border:2.5px solid rgba(37,99,235,.2);border-top-color:var(--blue3);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.ocr-prog-pct{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue3)}
+.ocr-prog-bar-wrap{background:rgba(37,99,235,.12);border-radius:99px;height:8px;overflow:hidden}
+.ocr-prog-bar{height:100%;background:linear-gradient(90deg,var(--blue3),var(--blue2));border-radius:99px;transition:width .3s ease;width:0%}
+.ocr-prog-step{font-size:11px;color:var(--muted);margin-top:8px}
+
+/* Raw Text */
+.ocr-raw-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;margin-top:14px;transition:all .18s}
+.ocr-raw-toggle:hover{background:var(--blue-lllt);border-color:var(--blue3)}
+.ocr-raw-toggle span{font-size:11.5px;font-weight:700;color:var(--muted)}
+.ocr-raw-toggle svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round;transition:transform .22s}
+.ocr-raw-toggle.open svg{transform:rotate(180deg)}
+.ocr-raw-text{display:none;background:#f8faff;border:1.5px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:12px;font-family:var(--mono);font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;word-break:break-all}
+.ocr-raw-text.show{display:block}
+
+/* Extracted fields preview */
+.ocr-extracted{display:none;margin-top:14px;border:1.5px solid #86efac;border-radius:12px;overflow:hidden}
+.ocr-extracted.show{display:block}
+.ocr-ext-hdr{background:linear-gradient(135deg,#16a34a,#15803d);padding:10px 14px;display:flex;align-items:center;gap:8px}
+.ocr-ext-hdr svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.ocr-ext-hdr span{font-size:12px;font-weight:700;color:#fff}
+.ocr-ext-hdr .ocr-ext-count{margin-left:auto;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700;color:#fff}
+.ocr-ext-list{background:var(--green-lt);padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.ocr-ext-row{display:flex;align-items:center;gap:10px}
+.ocr-ext-key{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);min-width:110px;flex-shrink:0}
+.ocr-ext-val{font-size:12.5px;font-weight:700;color:var(--blue);font-family:var(--mono);background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Error */
+.ocr-err{display:none;margin-top:14px;background:var(--red-lt);border:1.5px solid #fca5a5;border-left:4px solid var(--red);border-radius:10px;padding:12px 14px}
+.ocr-err.show{display:flex;gap:10px;align-items:flex-start}
+.ocr-err svg{width:16px;height:16px;stroke:var(--red);fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0;margin-top:1px}
+.ocr-err-text{font-size:12px;font-weight:600;color:var(--red);line-height:1.55}
+
+/* Action buttons */
+.ocr-actions{display:flex;gap:10px;margin-top:18px;padding-bottom:4px}
+.btn-ocr-extract{flex:1;background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;padding:14px 16px;border-radius:11px;border:none;cursor:pointer;font-family:var(--font);font-size:13.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 5px 18px rgba(11,45,107,.32);transition:all .22s;letter-spacing:.02em}
+.btn-ocr-extract:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 9px 26px rgba(11,45,107,.42)}
+.btn-ocr-extract:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-ocr-extract svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-ocr-autofill{flex:1;background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);color:#fff;padding:14px 16px;border-radius:11px;border:none;cursor:pointer;font-family:var(--font);font-size:13.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 5px 18px rgba(22,163,74,.32);transition:all .22s;letter-spacing:.02em}
+.btn-ocr-autofill:hover{transform:translateY(-2px);box-shadow:0 9px 26px rgba(22,163,74,.42)}
+.btn-ocr-autofill svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-ocr-cancel{padding:14px 18px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;color:var(--muted);transition:all .18s}
+.btn-ocr-cancel:hover{background:var(--red-lt);border-color:var(--red);color:var(--red)}
+
+/* Fill flash animation on form fields */
+@keyframes fieldFlash{0%{box-shadow:0 0 0 0 rgba(22,163,74,.6);background:#f0fdf4}60%{box-shadow:0 0 0 8px rgba(22,163,74,0)}100%{background:inherit;box-shadow:none}}
+.field-filled{animation:fieldFlash .7s ease both}
+
+/* Toolbar OCR button */
+.btn-ocr-toolbar{background:linear-gradient(135deg,var(--blue) 0%,var(--blue2) 100%);color:#fff;border:none;box-shadow:0 3px 12px rgba(11,45,107,.3)}
+.btn-ocr-toolbar:hover{background:linear-gradient(135deg,var(--blue2) 0%,var(--blue3) 100%);transform:translateY(-1px);box-shadow:0 6px 18px rgba(11,45,107,.42)}
+
+@media(max-width:400px){
+  .ocr-tabs{flex-direction:column}
+  .ocr-actions{flex-wrap:wrap}
+  .btn-ocr-cancel{width:100%;order:3}
+}
+
+#wa-modal{display:none;position:fixed;inset:0;background:rgba(6,29,66,.6);backdrop-filter:blur(10px);z-index:998;align-items:center;justify-content:center;padding:20px}
+#wa-modal.show{display:flex;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.wa-box{background:#fff;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(11,45,107,.3);overflow:hidden;animation:slideUp .3s cubic-bezier(.22,1,.36,1) both}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.wa-box-hdr{background:linear-gradient(135deg,#16a34a,#15803d);padding:20px 24px;display:flex;align-items:center;gap:12px}
+.wa-box-hdr svg{width:28px;height:28px;fill:#fff;flex-shrink:0}
+.wa-box-hdr-text{color:#fff}
+.wa-box-hdr-text h3{font-family:var(--display);font-size:16px;font-weight:700}
+.wa-box-hdr-text p{font-size:11px;opacity:.75;margin-top:2px}
+.wa-box-body{padding:20px 24px}
+.wa-preview{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:16px;font-size:12px;line-height:1.75;white-space:pre-line;color:#1a3a1a;font-family:var(--mono);max-height:260px;overflow-y:auto;margin-bottom:16px;word-break:break-word}
+.wa-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wa-btn{padding:12px;border:none;border-radius:10px;font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.wa-btn-copy{background:var(--surface);color:var(--blue);border:1.5px solid var(--border)}
+.wa-btn-copy:hover{background:var(--blue-lt);border-color:var(--blue3)}
+.wa-btn-open{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+.wa-btn-open:hover{background:linear-gradient(135deg,#15803d,#166534)}
+.wa-close{display:block;width:100%;padding:10px;border:none;background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px}
+.wa-close:hover{color:var(--red)}
+.wa-copied{display:none;align-items:center;gap:5px;color:var(--green);font-size:11px;font-weight:700;justify-content:center;margin-top:8px}
+.wa-copied.show{display:flex}
+
+/* ===== FOOTER ===== */
+.cftr{background:linear-gradient(135deg,var(--blue) 0%,#061d42 100%);text-align:center;font-size:11px;color:rgba(255,255,255,.4);padding:12px;letter-spacing:.06em;font-family:var(--mono)}
+
+/* ===== COURIER TRIGGER FIELD ===== */
+.courier-trigger-wrap{position:relative;cursor:pointer;display:block}
+.courier-trigger-input{cursor:pointer!important;padding-right:64px!important;background:linear-gradient(135deg,var(--surface),#edf2fb)!important;transition:border-color .18s,box-shadow .18s,background .18s!important}
+.courier-trigger-input:hover{border-color:var(--blue3)!important;background:linear-gradient(135deg,#e8f0fe,#dce8fc)!important}
+.courier-trigger-input:focus{border-color:var(--blue3)!important;box-shadow:0 0 0 4px rgba(37,99,235,.12)!important;transform:none!important}
+.courier-trigger-input.has-value{color:var(--blue)!important;font-weight:700!important;background:linear-gradient(135deg,#eef4ff,#e8f0fe)!important}
+.courier-trigger-icon{position:absolute;right:0;top:0;bottom:0;display:flex;align-items:center;gap:4px;padding:0 12px;pointer-events:none;color:var(--muted)}
+.courier-trigger-icon svg{width:14px;height:14px;flex-shrink:0}
+.courier-chevron{transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.courier-modal-open .courier-chevron{transform:rotate(180deg)}
+
+/* ===== COURIER PICKER MODAL ===== */
+#courier-modal{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;justify-content:center;visibility:hidden;pointer-events:none}
+#courier-modal.open{visibility:visible;pointer-events:auto}
+.cp-backdrop{position:absolute;inset:0;background:rgba(6,20,55,.55);backdrop-filter:blur(6px);opacity:0;transition:opacity .3s ease}
+#courier-modal.open .cp-backdrop{opacity:1}
+.cp-sheet{position:relative;width:100%;max-width:560px;max-height:88vh;background:#fff;border-radius:24px 24px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 48px rgba(11,45,107,.28);transform:translateY(100%);transition:transform .38s cubic-bezier(.22,1,.36,1);will-change:transform}
+#courier-modal.open .cp-sheet{transform:translateY(0)}
+@media(min-width:640px){
+  #courier-modal{align-items:center}
+  .cp-sheet{max-height:82vh;border-radius:20px;transform:translateY(32px) scale(.96);opacity:0;transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+  #courier-modal.open .cp-sheet{transform:translateY(0) scale(1);opacity:1}
+}
+.cp-handle-bar{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 0;flex-shrink:0}
+@media(min-width:640px){.cp-handle-bar{display:none}}
+
+/* Head */
+.cp-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1.5px solid var(--border);flex-shrink:0}
+.cp-head-left{display:flex;align-items:center;gap:12px}
+.cp-head-icon{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 10px rgba(11,45,107,.28)}
+.cp-head-icon svg{width:18px;height:18px;stroke:#fff}
+.cp-head-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--blue);letter-spacing:-.02em}
+.cp-head-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.cp-close-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .18s;color:var(--muted)}
+.cp-close-btn:hover{background:var(--red-lt);border-color:var(--red2);color:var(--red2)}
+.cp-close-btn svg{width:14px;height:14px}
+
+/* Search */
+.cp-search-wrap{position:relative;padding:12px 16px 8px;flex-shrink:0}
+.cp-search-icon{position:absolute;left:28px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex}
+.cp-search-icon svg{width:15px;height:15px}
+.cp-search-input{width:100%;padding:11px 40px 11px 40px;border:1.5px solid var(--border);border-radius:11px;font-family:var(--font);font-size:13.5px;color:var(--text);background:var(--surface);outline:none;transition:border-color .18s,box-shadow .18s}
+.cp-search-input:focus{border-color:var(--blue3);background:#fff;box-shadow:0 0 0 3.5px rgba(37,99,235,.11)}
+.cp-search-clear{position:absolute;right:28px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:none;background:var(--muted);display:none;align-items:center;justify-content:center;cursor:pointer;transition:background .18s}
+.cp-search-clear.visible{display:flex}
+.cp-search-clear:hover{background:var(--red2)}
+.cp-search-clear svg{width:11px;height:11px;stroke:#fff}
+
+/* Meta */
+.cp-meta{padding:0 20px 6px;font-size:11px;color:var(--muted);flex-shrink:0}
+.cp-meta strong{color:var(--blue2)}
+
+/* List */
+.cp-list-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.cp-list{flex:1;overflow-y:auto;padding:4px 10px 8px;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.cp-list::-webkit-scrollbar{width:4px}
+.cp-list::-webkit-scrollbar-track{background:transparent}
+.cp-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Courier item */
+.cp-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .16s cubic-bezier(.34,1.56,.64,1);user-select:none;-webkit-tap-highlight-color:transparent}
+.cp-item:hover,.cp-item:focus{background:var(--blue-lllt);border-color:var(--blue-lt);transform:translateX(3px)}
+.cp-item:active{transform:scale(.98) translateX(1px)}
+.cp-item.selected{background:linear-gradient(135deg,var(--blue-lt),#dce8fc);border-color:var(--blue3)}
+.cp-item-logo{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:-.03em;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.cp-item-info{flex:1;min-width:0}
+.cp-item-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-item-name mark{background:rgba(37,99,235,.14);color:var(--blue2);border-radius:3px;padding:0 1px}
+.cp-item-tag{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-item-check{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue2));display:none;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(11,45,107,.3)}
+.cp-item.selected .cp-item-check{display:flex}
+.cp-item-check svg{width:11px;height:11px;stroke:#fff}
+
+/* Category divider */
+.cp-divider{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:8px 12px 4px;display:flex;align-items:center;gap:8px}
+.cp-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Empty state */
+.cp-empty{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px 20px;color:var(--muted);text-align:center}
+.cp-empty.show{display:flex}
+.cp-empty svg{width:40px;height:40px;opacity:.35}
+.cp-empty span{font-size:13px;font-weight:600;color:var(--text)}
+.cp-empty em{font-style:normal;color:var(--blue2)}
+.cp-empty small{font-size:11px}
+
+/* Footer */
+.cp-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 14px;border-top:1.5px solid var(--border);flex-shrink:0}
+.cp-footer-badge{display:inline-flex;align-items:center;gap:5px;background:var(--green-lt);border:1px solid #bbf7d0;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--green)}
+.cp-footer-badge svg{width:11px;height:11px;stroke:var(--green)}
+.cp-footer-tip{font-size:10.5px;color:var(--muted)}
+
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  body,html{background:#fff!important;margin:0;padding:0;width:210mm;height:297mm;overflow:hidden}
+  #toolbar,#action-bar,#overlay,.no-print,#wa-modal,#invoice-success,.generate-btn-wrap{display:none!important}
+  #shell{max-width:210mm!important;margin:0!important;padding:0!important;position:absolute;top:0;left:0}
+  .card{border:none!important;box-shadow:none!important;border-radius:0!important;width:210mm;min-height:297mm}
+  .cbody{padding:0!important}
+  @page{size:A4 portrait;margin:0;padding:0}
+  .sec{margin-bottom:0!important;page-break-inside:avoid!important}
+  .policy-grid{page-break-inside:avoid!important}
+  .pi{page-break-inside:avoid!important}
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:580px){
+  .chdr-inner{flex-direction:column}
+  .chdr-right{text-align:left}
+  .g2,.g3{grid-template-columns:1fr}
+  .cbody{padding:24px 20px}
+  #toolbar{padding:12px 16px;justify-content:center}
+  .t-actions{order:-1;width:100%;justify-content:center}
+  .policy-grid{grid-template-columns:1fr;gap:12px}
+  .wa-actions{grid-template-columns:1fr}
+  #action-bar{top:52px;padding:12px 16px}
+  .ab-label{font-size:10px}
+  .btn-ab-pdf,.btn-ab-wa{padding:10px 16px;font-size:11px}
+  .sec{margin-bottom:24px}
+  .sec-ttl{margin-bottom:16px;padding-bottom:10px}
+  .fl input,.fl select,.fl textarea{padding:12px 14px}
+  .pi{padding:12px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- Overlay -->
+<div id="overlay">
+  <div class="spin-wrap"><div class="spin"></div></div>
+  <p id="overlay-title">Generating PDF</p>
+  <span id="overlay-sub">Please wait…</span>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- WhatsApp Modal -->
+<div id="wa-modal">
+  <div class="wa-box">
+    <div class="wa-box-hdr">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      <div class="wa-box-hdr-text">
+        <h3>Share via WhatsApp</h3>
+        <p>Send shipment invoice details</p>
+      </div>
+    </div>
+    <div class="wa-box-body">
+      <div class="wa-preview" id="wa-preview-text"></div>
+      <div class="wa-actions">
+        <button class="wa-btn wa-btn-copy" onclick="copyWaMessage()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Message
+        </button>
+        <button class="wa-btn wa-btn-open" onclick="openWhatsApp()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+          Open WhatsApp
+        </button>
+      </div>
+      <div class="wa-copied" id="wa-copied">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Copied to clipboard!
+      </div>
+      <button class="wa-close" onclick="closeWaModal()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="t-brand">
+    <div class="t-brand-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 7H4c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 11H4V9h16v9zM6 14h2v2H6zm0-3h2v2H6zm4 3h4v2h-4zm0-3h4v2h-4zm5 3h3v2h-3zM4 5h16V3H4c-1.1 0-2 .9-2 2v1h2V5z"/></svg>
+    </div>
+    SBN <span>Logistics</span>
+  </div>
+  <div class="t-actions">
+    <div class="t-module-badge"><div class="t-module-badge-dot"></div>Shipment Invoice</div>
+    <button class="btn btn-ocr-toolbar" onclick="openOCR()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
+      Scan &amp; Fill
+    </button>
+    <button class="btn btn-back" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+  </div>
+</div>
+
+<!-- TOP ACTION BAR -->
+<div id="action-bar">
+  <div class="ab-label">
+    <div class="ab-label-dot"></div>
+    Invoice Ready
+  </div>
+  <div class="ab-actions">
+    <button class="btn btn-ab-pdf" onclick="downloadPDF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn btn-ab-wa" onclick="openWaModal()">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/></svg>
+      Share on WhatsApp
+    </button>
+  </div>
+</div>
+
+<div id="shell">
+<div class="card">
+
+  <!-- CARD HEADER -->
+  <div class="chdr">
+    <div class="chdr-grid"></div>
+    <div class="chdr-inner">
+      <div>
+        <div class="chdr-badge"><div class="chdr-badge-dot"></div>Shipment Invoice Module</div>
+        <div class="chdr-name">Sidharth <em>Bright</em> Networks</div>
+        <div class="chdr-contact">
+          <span>Supaul, Bihar – 852131</span><br/>
+          <span>+91 95087 87946</span>
+        </div>
+        <div class="admin-badge-si"><div class="admin-badge-dot"></div>Admin Mode · Shipment Invoice</div>
+      </div>
+      <div class="chdr-right">
+        <div class="chdr-qlbl">Invoice No.</div>
+        <div class="chdr-qno" id="fh-invno">SI-—</div>
+        <div class="chdr-date" id="fh-date"></div>
+        <div class="chdr-clock" id="fh-clock"></div>
+      </div>
+    </div>
+  </div>
+  <div class="red-strip"></div>
+
+  <div class="cbody">
+
+    <!-- SECTION 1: Invoice Info -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        </div>
+        Invoice Information
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Invoice Number</label>
+          <input id="f-invno" type="text" readonly/>
+        </div>
+        <div class="fl">
+          <label>Date</label>
+          <input id="f-date" type="date"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Customer Details -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+        </div>
+        Customer Details
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Customer Name</label>
+          <input id="f-cname" type="text" placeholder="Full Name"/>
+        </div>
+        <div class="fl">
+          <label>Customer Mobile Number</label>
+          <input id="f-cmob" type="tel" placeholder="+91 XXXXX XXXXX" maxlength="13"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Shipment Route -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg>
+        </div>
+        Shipment Route
+      </div>
+      <div class="g2">
+        <div class="fl">
+          <label>Origin Pincode</label>
+          <input id="f-origin" type="text" placeholder="e.g. 110001" maxlength="10"/>
+        </div>
+        <div class="fl">
+          <label>Destination Pincode</label>
+          <input id="f-dest" type="text" placeholder="e.g. 400001" maxlength="10"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Shipment Details -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/></svg>
+        </div>
+        Shipment Details
+      </div>
+      <div class="g3">
+        <div class="fl" style="grid-column:span 1">
+          <label>AWB Number</label>
+          <input id="f-awb" type="text" placeholder="Air Waybill No." autocomplete="off"/>
+        </div>
+        <div class="fl" style="grid-column:span 1">
+          <label>Courier Company</label>
+          <div class="courier-trigger-wrap" onclick="openCourierPicker()">
+            <input id="f-courier" type="text" placeholder="Click to select courier…" autocomplete="off" readonly class="courier-trigger-input"/>
+            <span class="courier-trigger-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg class="courier-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+        </div>
+        <div class="fl" style="grid-column:span 1">
+          <label>Parcel Weight (kg)</label>
+          <input id="f-dweight" type="number" placeholder="0.00" min="0" step="0.01"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: Charges -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        Invoice Charges
+      </div>
+      <div class="g2" style="margin-bottom:18px">
+        <div class="fl total-field">
+          <label>Total Freight Amount (₹)</label>
+          <input id="f-total" type="number" placeholder="0.00" min="0" step="0.01" oninput="syncTotal()"/>
+        </div>
+        <div class="fl">
+          <label>Payment Status</label>
+          <div class="status-toggle">
+            <button type="button" class="st-btn st-dues active" id="st-dues" onclick="setStatus('dues')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Dues
+            </button>
+            <button type="button" class="st-btn st-paid" id="st-paid" onclick="setStatus('paid')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Paid
+            </button>
+          </div>
+          <div class="status-dues-stamp" id="status-dues-stamp">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Payment Dues — Amount pending
+          </div>
+          <div class="status-paid-stamp" id="status-paid-stamp">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Payment Received — Cleared
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: Remarks -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+        </div>
+        Remarks
+      </div>
+      <div class="fl">
+        <label>Remarks / Notes (Optional)</label>
+        <textarea id="f-remarks" placeholder="Add any internal notes, shipment details, or special remarks here…" rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- GENERATE BUTTON -->
+    <div class="generate-btn-wrap no-print">
+      <button class="btn btn-generate" onclick="generateInvoice()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Generate Shipment Invoice
+      </button>
+    </div>
+
+    <!-- SUCCESS BANNER -->
+    <div id="invoice-success">
+      <div class="success-banner">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+        <div class="success-text">
+          <h4>Invoice Generated Successfully</h4>
+          <p id="success-sub">Use the action bar above to Download PDF or Share on WhatsApp.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- POLICY SECTION -->
+    <div class="sec">
+      <div class="sec-ttl">
+        <div class="sec-ttl-dot">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        </div>
+        Shipment Invoice & Billing Policy
+      </div>
+      <div class="policy-grid">
+        <div class="pi"><div class="pi-n">1</div><div class="pi-t">All invoiced charges are based on actual shipment details provided at the time of booking.</div></div>
+        <div class="pi"><div class="pi-n">2</div><div class="pi-t">Freight charges are calculated based on declared or actual weight, whichever is higher.</div></div>
+        <div class="pi"><div class="pi-n">3</div><div class="pi-t">Handling charges apply for special care, fragile, or oversized shipments.</div></div>
+        <div class="pi"><div class="pi-n">4</div><div class="pi-t">GST and applicable taxes are levied as per government regulations and may vary by service type.</div></div>
+        <div class="pi"><div class="pi-n">5</div><div class="pi-t">Payment must be completed within 7 days of invoice date to avoid penalty charges.</div></div>
+        <div class="pi"><div class="pi-n">6</div><div class="pi-t">All invoices are system-generated and serve as official billing documents.</div></div>
+        <div class="pi"><div class="pi-n">7</div><div class="pi-t">Disputes regarding invoice amounts must be raised within 48 hours of receipt.</div></div>
+        <div class="pi"><div class="pi-n">8</div><div class="pi-t">Sidharth Bright Networks is not liable for delays caused by courier partner operations.</div></div>
+        <div class="pi"><div class="pi-n">9</div><div class="pi-t">Declared value of shipment must be accurate; false declaration may lead to claim rejection.</div></div>
+        <div class="pi"><div class="pi-n">10</div><div class="pi-t">All billing records are maintained for audit and dispute resolution purposes.</div></div>
+      </div>
+    </div>
+
+  </div><!-- /cbody -->
+
+  <div class="cftr">Sidharth Bright Networks · Shipment Invoice Module · Admin Only · System Generated</div>
+</div><!-- /card -->
+</div><!-- /shell -->
+
+<!-- ===== COURIER PICKER MODAL ===== -->
+<div id="courier-modal" role="dialog" aria-modal="true" aria-label="Select Courier Company">
+  <div class="cp-backdrop" onclick="closeCourierPicker()"></div>
+  <div class="cp-sheet">
+    <div class="cp-handle-bar"></div>
+    <div class="cp-head">
+      <div class="cp-head-left">
+        <div class="cp-head-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div>
+          <div class="cp-head-title">Select Courier Company</div>
+          <div class="cp-head-sub">India's top logistics partners</div>
+        </div>
+      </div>
+      <button class="cp-close-btn" onclick="closeCourierPicker()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cp-search-wrap">
+      <span class="cp-search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input id="cp-search" class="cp-search-input" type="text" placeholder="Search courier company…" autocomplete="off" oninput="filterCouriers(this.value)" aria-label="Search courier"/>
+      <button class="cp-search-clear" id="cp-clear-btn" onclick="clearCourierSearch()" aria-label="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cp-meta" id="cp-meta">Showing all <strong id="cp-count">0</strong> couriers</div>
+    <div class="cp-list-wrap">
+      <div class="cp-list" id="cp-list" role="listbox"></div>
+      <div class="cp-empty" id="cp-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <span>No courier found for "<em id="cp-empty-term"></em>"</span>
+        <small>Try a different name or abbreviation</small>
+      </div>
+    </div>
+    <div class="cp-footer">
+      <span class="cp-footer-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Verified Partners Only
+      </span>
+      <span class="cp-footer-tip">Tap any courier to auto-fill the form</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== OCR MODULE ===== -->
+<button id="ocr-fab" onclick="openOCR()" title="Scan &amp; Auto-fill">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
+  Scan &amp; Fill
+  <span class="fab-pulse"></span>
+</button>
+
+<div id="ocr-overlay" onclick="ocrOverlayClick(event)">
+  <div class="ocr-sheet" id="ocr-sheet">
+    <span class="ocr-handle"></span>
+
+    <div class="ocr-hdr">
+      <div class="ocr-hdr-left">
+        <div class="ocr-hdr-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
+        </div>
+        <div>
+          <div class="ocr-hdr-ttl">OCR Auto-fill</div>
+          <div class="ocr-hdr-sub">Free · 100% Browser · No API Key</div>
+        </div>
+      </div>
+      <button class="ocr-close-btn" onclick="closeOCR()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="ocr-body">
+
+      <!-- Source Tabs -->
+      <div class="ocr-tabs">
+        <button class="ocr-tab active" id="tab-upload" onclick="switchOCRTab('upload')">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Image
+        </button>
+        <button class="ocr-tab" id="tab-camera" onclick="switchOCRTab('camera')">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Camera / Photo
+        </button>
+      </div>
+
+      <!-- Upload Tab Content -->
+      <div id="ocr-upload-content">
+        <div class="ocr-drop-zone" id="ocr-drop-zone"
+          ondragover="ocrDragOver(event)" ondragleave="ocrDragLeave(event)" ondrop="ocrDrop(event)">
+          <input type="file" id="ocr-file-input" accept="image/*,.pdf" onchange="ocrFileSelected(event)"/>
+          <div class="ocr-dz-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
+          </div>
+          <div class="ocr-dz-ttl">Drop screenshot here or tap to browse</div>
+          <div class="ocr-dz-sub">Supports any shipment label, invoice or<br>booking confirmation screenshot</div>
+          <div class="ocr-dz-formats">
+            <span class="ocr-dz-fmt">JPG</span>
+            <span class="ocr-dz-fmt">PNG</span>
+            <span class="ocr-dz-fmt">WEBP</span>
+            <span class="ocr-dz-fmt">BMP</span>
+            <span class="ocr-dz-fmt">GIF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera Tab Content -->
+      <div id="ocr-camera-content" class="ocr-camera-wrap">
+        <div class="ocr-cam-btn">
+          <input type="file" id="ocr-cam-input" accept="image/*" capture="environment" onchange="ocrFileSelected(event)"/>
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Open Camera &amp; Capture
+        </div>
+        <p class="ocr-cam-tip">Point your camera at a shipment label, waybill, booking SMS or any document with shipment details. Best results in good lighting.</p>
+      </div>
+
+      <!-- Preview -->
+      <div class="ocr-preview" id="ocr-preview">
+        <img id="ocr-preview-img" src="" alt="Preview"/>
+        <div class="ocr-preview-bar">
+          <span class="ocr-preview-name" id="ocr-preview-name">image.jpg</span>
+          <span class="ocr-preview-rm" onclick="clearOCRImage()">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Remove
+          </span>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="ocr-progress" id="ocr-progress">
+        <div class="ocr-prog-hdr">
+          <div class="ocr-prog-label">
+            <span class="spin-sm"></span>
+            <span id="ocr-prog-label-text">Initialising OCR Engine…</span>
+          </div>
+          <span class="ocr-prog-pct" id="ocr-prog-pct">0%</span>
+        </div>
+        <div class="ocr-prog-bar-wrap">
+          <div class="ocr-prog-bar" id="ocr-prog-bar"></div>
+        </div>
+        <div class="ocr-prog-step" id="ocr-prog-step">Loading Tesseract.js engine (first run may take a few seconds)…</div>
+      </div>
+
+      <!-- Error -->
+      <div class="ocr-err" id="ocr-err">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span class="ocr-err-text" id="ocr-err-text">Something went wrong. Please try again.</span>
+      </div>
+
+      <!-- Extracted Fields Preview -->
+      <div class="ocr-extracted" id="ocr-extracted">
+        <div class="ocr-ext-hdr">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Fields Detected</span>
+          <span class="ocr-ext-count" id="ocr-ext-count">0 fields</span>
+        </div>
+        <div class="ocr-ext-list" id="ocr-ext-list"></div>
+      </div>
+
+      <!-- Raw Text Toggle -->
+      <div class="ocr-raw-toggle" id="ocr-raw-toggle" onclick="toggleRawText()" style="display:none">
+        <span>View raw extracted text</span>
+        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="ocr-raw-text" id="ocr-raw-text"></div>
+
+      <!-- Actions -->
+      <div class="ocr-actions">
+        <button class="btn-ocr-extract" id="btn-ocr-extract" onclick="runOCR()" disabled>
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
+          Extract Text
+        </button>
+        <button class="btn-ocr-autofill" id="btn-ocr-autofill" onclick="doAutoFill()" style="display:none">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Auto-fill Form
+        </button>
+        <button class="btn-ocr-cancel" onclick="closeOCR()">Cancel</button>
+      </div>
+
+    </div><!-- /ocr-body -->
+  </div><!-- /ocr-sheet -->
+</div><!-- /ocr-overlay -->
+
+<script>
+/* ============================================================
+   OCR MODULE — Tesseract.js (100% free, browser-based)
+   ============================================================ */
+
+var ocrImageFile = null;
+var ocrExtracted = {};
+var ocrRawText   = '';
+var ocrCurrentTab = 'upload';
+
+/* ── Open / Close ── */
+function openOCR(){
+  document.getElementById('ocr-overlay').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeOCR(){
+  document.getElementById('ocr-overlay').classList.remove('show');
+  document.body.style.overflow='';
+}
+function ocrOverlayClick(e){
+  if(e.target===document.getElementById('ocr-overlay')) closeOCR();
+}
+
+/* ── Tabs ── */
+function switchOCRTab(tab){
+  ocrCurrentTab=tab;
+  document.getElementById('tab-upload').classList.toggle('active', tab==='upload');
+  document.getElementById('tab-camera').classList.toggle('active', tab==='camera');
+  document.getElementById('ocr-upload-content').style.display = tab==='upload' ? 'block' : 'none';
+  document.getElementById('ocr-camera-content').style.display = tab==='camera' ? 'block' : 'none';
+}
+
+/* ── Drag & Drop ── */
+function ocrDragOver(e){e.preventDefault();document.getElementById('ocr-drop-zone').classList.add('drag-over');}
+function ocrDragLeave(e){document.getElementById('ocr-drop-zone').classList.remove('drag-over');}
+function ocrDrop(e){
+  e.preventDefault();
+  document.getElementById('ocr-drop-zone').classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if(file) loadOCRFile(file);
+}
+
+/* ── File Selection ── */
+function ocrFileSelected(e){
+  var file = e.target.files[0];
+  if(file) loadOCRFile(file);
+}
+
+function loadOCRFile(file){
+  if(!file.type.startsWith('image/')){
+    showOCRError('Please select a valid image file (JPG, PNG, WEBP, etc.)');
+    return;
+  }
+  ocrImageFile = file;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = document.getElementById('ocr-preview-img');
+    img.src = e.target.result;
+    document.getElementById('ocr-preview').classList.add('show');
+    document.getElementById('ocr-preview-name').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+
+  /* Reset previous results */
+  hideOCRError();
+  document.getElementById('ocr-extracted').classList.remove('show');
+  document.getElementById('ocr-raw-toggle').style.display = 'none';
+  document.getElementById('ocr-raw-text').classList.remove('show');
+  document.getElementById('ocr-progress').classList.remove('show');
+  document.getElementById('btn-ocr-autofill').style.display = 'none';
+  document.getElementById('btn-ocr-extract').disabled = false;
+  document.getElementById('ocr-raw-toggle').classList.remove('open');
+  ocrExtracted = {};
+  ocrRawText = '';
+}
+
+function clearOCRImage(){
+  ocrImageFile = null;
+  document.getElementById('ocr-preview').classList.remove('show');
+  document.getElementById('ocr-preview-img').src='';
+  document.getElementById('ocr-file-input').value='';
+  document.getElementById('ocr-cam-input').value='';
+  document.getElementById('btn-ocr-extract').disabled = true;
+  document.getElementById('btn-ocr-autofill').style.display='none';
+  document.getElementById('ocr-extracted').classList.remove('show');
+  document.getElementById('ocr-raw-toggle').style.display='none';
+  document.getElementById('ocr-raw-text').classList.remove('show');
+  document.getElementById('ocr-progress').classList.remove('show');
+  hideOCRError();
+}
+
+/* ── Progress helpers ── */
+function setOCRProgress(pct, label, step){
+  var bar = document.getElementById('ocr-prog-bar');
+  bar.style.width = pct + '%';
+  document.getElementById('ocr-prog-pct').textContent = Math.round(pct) + '%';
+  if(label) document.getElementById('ocr-prog-label-text').textContent = label;
+  if(step)  document.getElementById('ocr-prog-step').textContent = step;
+}
+
+function showOCRError(msg){
+  var el = document.getElementById('ocr-err');
+  document.getElementById('ocr-err-text').textContent = msg;
+  el.classList.add('show');
+}
+function hideOCRError(){
+  document.getElementById('ocr-err').classList.remove('show');
+}
+
+/* ── Run OCR ── */
+function runOCR(){
+  if(!ocrImageFile){ showOCRError('Please select an image first.'); return; }
+
+  hideOCRError();
+  document.getElementById('ocr-progress').classList.add('show');
+  document.getElementById('btn-ocr-extract').disabled = true;
+  document.getElementById('ocr-extracted').classList.remove('show');
+  document.getElementById('ocr-raw-toggle').style.display = 'none';
+  document.getElementById('btn-ocr-autofill').style.display = 'none';
+
+  setOCRProgress(5, 'Loading OCR Engine…', 'Initialising Tesseract.js (free, offline)…');
+
+  Tesseract.recognize(
+    ocrImageFile,
+    'eng',
+    {
+      logger: function(m){
+        if(m.status === 'loading tesseract core'){
+          setOCRProgress(10, 'Loading OCR Core…', 'Downloading engine components…');
+        } else if(m.status === 'loading language traineddata'){
+          setOCRProgress(25, 'Loading Language Data…', 'Loading English language model…');
+        } else if(m.status === 'initializing api'){
+          setOCRProgress(40, 'Initialising…', 'Setting up OCR pipeline…');
+        } else if(m.status === 'recognizing text'){
+          var p = 40 + (m.progress || 0) * 55;
+          setOCRProgress(p, 'Recognising Text…', 'Scanning image for text… ' + Math.round((m.progress||0)*100) + '%');
+        }
+      }
+    }
+  ).then(function(result){
+    setOCRProgress(100, 'Complete!', 'Text extraction finished.');
+    ocrRawText = result.data.text;
+
+    setTimeout(function(){
+      document.getElementById('ocr-progress').classList.remove('show');
+      processOCRText(ocrRawText);
+    }, 500);
+
+  }).catch(function(err){
+    document.getElementById('ocr-progress').classList.remove('show');
+    document.getElementById('btn-ocr-extract').disabled = false;
+    showOCRError('OCR failed: ' + (err.message || 'Unknown error. Try a clearer image.'));
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PROFESSIONAL CONTEXTUAL EXTRACTION ENGINE
+   Architecture: Line Segmentation → Keyword Detection
+                 → Nearest Value Matching → Validation → Autofill
+   ═══════════════════════════════════════════════════════════ */
+function processOCRText(text){
+  ocrExtracted = {};
+
+  /* ══ STEP 1: Line Segmentation — preserve structure, never flatten ══ */
+  var t = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var lines = t.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+
+  /* ══ STEP 2: Shared Context Detectors ══ */
+  /* Lines containing these are AWB/tracking context — never extract mobile from them */
+  var AWB_CTX_RX = /\b(?:awb|tracking|consignment|docket|shipment\s*id|scan\s*code|barcode|airway\s*bill)\b/i;
+  /* Lines containing invoice/order context — avoid treating order IDs as AWB/mobile */
+  var INV_CTX_RX = /\b(?:invoice|order[\s\-]?(?:no\.?|id|#)?|ref(?:erence)?[\s\-]?(?:no\.?|#)?|so[\s\-]?(?:no\.?|#)?)\b/i;
+
+  /* Helper: clean digit string (remove spaces/dashes) */
+  function cleanDigits(s){ return s.replace(/[\s\-]/g,''); }
+
+  /* ══ STEP 3: MOBILE NUMBER ══
+     Rules:
+       ✅ Starts with 6/7/8/9, exactly 10 digits, optional +91 prefix
+       ✅ Preferred near mobile/phone/contact/customer labels
+       ❌ Rejected on lines with AWB/tracking/invoice/order context
+       ❌ Never confuse AWB with mobile
+  */
+  var MOB_KEY_RX = /\b(?:mobile|mob\.?|phone|ph\.?|contact|call|whatsapp|customer[\s\-]?(?:no\.?|number)?|consignee|recipient|buyer)\b/i;
+  var MOB_VAL_RX = /(?:\+91[\s\-]?|91[\s\-]?|0)?([6-9]\d{4}[\s\-]?\d{5})/;
+  var foundMobile = false;
+
+  /* Pass 1: near mobile-context label */
+  lines.forEach(function(line, i){
+    if(foundMobile) return;
+    if(MOB_KEY_RX.test(line) && !AWB_CTX_RX.test(line)){
+      for(var j=i; j<=Math.min(i+2, lines.length-1); j++){
+        if(AWB_CTX_RX.test(lines[j]) || INV_CTX_RX.test(lines[j])) continue;
+        var mm = lines[j].match(MOB_VAL_RX);
+        if(mm){
+          var d = cleanDigits(mm[1]);
+          if(/^[6-9]\d{9}$/.test(d)){ ocrExtracted.mobile = '+91'+d; foundMobile=true; break; }
+        }
+      }
+    }
+  });
+
+  /* Pass 2: fallback — scan all lines, skip AWB/invoice context lines */
+  if(!foundMobile){
+    lines.forEach(function(line){
+      if(foundMobile) return;
+      if(AWB_CTX_RX.test(line) || INV_CTX_RX.test(line)) return;
+      var mm = line.match(MOB_VAL_RX);
+      if(mm){
+        var d = cleanDigits(mm[1]);
+        if(/^[6-9]\d{9}$/.test(d)){ ocrExtracted.mobile = '+91'+d; foundMobile=true; }
+      }
+    });
+  }
+
+  /* ══ STEP 4: AWB NUMBER ══
+     Rules:
+       ✅ Only extract near: AWB, Tracking, Tracking Number, Shipment ID, Consignment, Docket
+       ✅ Support numeric (10–18 digits) and alphanumeric (courier prefix) formats
+       ❌ Strictly reject values that match a mobile number pattern
+       ❌ Never pick order IDs, invoice numbers, timestamps
+  */
+  var AWB_KEY_RX = /\b(?:awb|airway[\s\-]?bill|tracking[\s\-]?(?:no\.?|number|#|id|code)?|consignment[\s\-]?(?:no\.?|number)?|docket[\s\-]?(?:no\.?|#)?|shipment[\s\-]?(?:id|no\.?)|scan[\s\-]?(?:code|barcode)|lrn)\b/i;
+  var AWB_INLINE_RX = /\b(?:awb|airway[\s\-]?bill|tracking[\s\-]?(?:no\.?|number|#|id|code)?|consignment[\s\-]?(?:no\.?|number)?|docket[\s\-]?(?:no\.?|#)?|shipment[\s\-]?(?:id|no\.?)|scan[\s\-]?(?:code|barcode)|lrn)\b[:\s#\-]*([A-Z0-9]{6,24})/i;
+  var foundAWB = false;
+
+  lines.forEach(function(line, i){
+    if(foundAWB) return;
+    if(AWB_KEY_RX.test(line)){
+      /* Try inline extraction first (keyword: VALUE on same line) */
+      var inlineM = line.match(AWB_INLINE_RX);
+      if(inlineM){
+        var cand = inlineM[1].toUpperCase();
+        if(cand.length >= 6 && !/^[6-9]\d{9}$/.test(cand) &&
+           !/^(NO|NUM|NUMBER|NULL|NONE|NA)$/i.test(cand)){
+          ocrExtracted.awb = cand; foundAWB = true; return;
+        }
+      }
+      /* Check next 1–3 lines for the AWB value */
+      for(var j=i+1; j<=Math.min(i+3, lines.length-1); j++){
+        /* Prefer alphanumeric courier prefix format */
+        var alphaM = lines[j].match(/\b([A-Z]{1,6}[0-9]{6,18})\b/i);
+        if(alphaM && !/^[6-9]\d{9}$/.test(alphaM[1])){
+          ocrExtracted.awb = alphaM[1].toUpperCase(); foundAWB = true; break;
+        }
+        /* Pure numeric (not a mobile, not an invoice short number) */
+        var numM = lines[j].match(/\b([0-9]{10,18})\b/);
+        if(numM && !/^[6-9]\d{9}$/.test(numM[1])){
+          ocrExtracted.awb = numM[1]; foundAWB = true; break;
+        }
+      }
+    }
+  });
+
+  /* Fallback: standalone alphanumeric string matching typical courier AWB pattern */
+  if(!foundAWB){
+    lines.forEach(function(line){
+      if(foundAWB || AWB_CTX_RX.test(line)) return;
+      var alphaM = line.match(/\b([A-Z]{2,6}[0-9]{8,16})\b/i);
+      if(alphaM){
+        var cand = alphaM[1].toUpperCase();
+        if(!/^[6-9]\d{9}$/.test(cand) &&
+           (!ocrExtracted.mobile || cand !== ocrExtracted.mobile.replace('+91',''))){
+          ocrExtracted.awb = cand; foundAWB = true;
+        }
+      }
+    });
+  }
+
+  /* ══ STEP 5: PINCODE EXTRACTION (contextual) ══
+     Rules:
+       ✅ Origin keywords: origin, pickup, sender, from, shipper, consignor
+       ✅ Destination keywords: destination, delivery, to, customer, consignee, recipient
+       ✅ Search same line + next 4 lines after keyword
+       ❌ Never use pins[0]/pins[1] — always use keyword context
+       ❌ Skip lines with AWB/invoice context
+  */
+  var ORIGIN_KEY_RX = /\b(?:origin|pickup|pick[\s\-]?up|sender|from|source|consignor|shipper|ship[\s\-]?from|dispatch(?:ed)?[\s\-]?from|book(?:ing)?[\s\-]?(?:from|origin))\b/i;
+  var DEST_KEY_RX   = /\b(?:destination|delivery|deliver(?:ed)?[\s\-]?to|shipping[\s\-]?to|ship[\s\-]?to|consignee|recipient|receiver|customer[\s\-]?(?:address)?|bill[\s\-]?to|to[\s\-]?pin(?:code)?|deliver[\s\-]?at)\b/i;
+  var PIN_VAL_RX    = /\b([1-9][0-9]{5})\b/;
+  var foundOriginPin = false, foundDestPin = false;
+
+  /* Pass 1: keyword-guided line search */
+  lines.forEach(function(line, i){
+    if(AWB_CTX_RX.test(line) || INV_CTX_RX.test(line)) return;
+
+    if(!foundOriginPin && ORIGIN_KEY_RX.test(line)){
+      var pm = line.match(PIN_VAL_RX);
+      if(pm){ ocrExtracted.originPin = pm[1]; foundOriginPin = true; return; }
+      for(var j=i+1; j<=Math.min(i+4, lines.length-1); j++){
+        if(DEST_KEY_RX.test(lines[j]) || AWB_CTX_RX.test(lines[j])) break;
+        pm = lines[j].match(PIN_VAL_RX);
+        if(pm){ ocrExtracted.originPin = pm[1]; foundOriginPin = true; break; }
+      }
+    }
+
+    if(!foundDestPin && DEST_KEY_RX.test(line)){
+      var pm = line.match(PIN_VAL_RX);
+      if(pm){ ocrExtracted.destPin = pm[1]; foundDestPin = true; return; }
+      for(var j=i+1; j<=Math.min(i+4, lines.length-1); j++){
+        if(ORIGIN_KEY_RX.test(lines[j]) || AWB_CTX_RX.test(lines[j])) break;
+        pm = lines[j].match(PIN_VAL_RX);
+        if(pm){ ocrExtracted.destPin = pm[1]; foundDestPin = true; break; }
+      }
+    }
+  });
+
+  /* Pass 2: fallback — collect all 6-digit pincodes, skip AWB/invoice lines */
+  if(!foundOriginPin || !foundDestPin){
+    var allPins = [];
+    lines.forEach(function(line){
+      if(AWB_CTX_RX.test(line) || INV_CTX_RX.test(line)) return;
+      var pinG = /\b([1-9][0-9]{5})\b/g, pm;
+      while((pm = pinG.exec(line)) !== null){
+        if(allPins.indexOf(pm[1]) === -1) allPins.push(pm[1]);
+      }
+    });
+    if(!foundOriginPin && allPins.length >= 1){
+      ocrExtracted.originPin = allPins[0]; foundOriginPin = true;
+    }
+    if(!foundDestPin && allPins.length >= 2 && allPins[1] !== ocrExtracted.originPin){
+      ocrExtracted.destPin = allPins[1]; foundDestPin = true;
+    }
+  }
+
+  /* ══ STEP 6: CUSTOMER NAME ══
+     Rules:
+       ✅ Inline: "Name: Ravi Kumar", "Customer Name: ..."
+       ✅ Next-line: keyword line → name on next 1-2 lines
+       ✅ Fallback: standalone Title Case 2-4 word line
+       ❌ Reject lines with AWB/tracking/logistics noise words
+       ❌ Reject lines with digits or address markers
+  */
+  var NAME_NOISE_RX = /\b(?:awb|tracking|delivery|address|details|copy|pickup|order|return|product|invoice|total|pincode|pin|date|status|track|weight|amount|price|paid|due|courier|shipment|logistics|express|india|bihar|delhi|mumbai|kolkata|city|state|street|near|road|lane|nagar|post|district|tehsil|sector|plot|flat|house|floor)\b/i;
+  var foundName = false;
+
+  /* Pass 1: inline keyword → value on same line */
+  var NAME_INLINE_PATTERNS = [
+    /\b(?:customer[\s\-]?name|consignee[\s\-]?name|recipient[\s\-]?name|receiver[\s\-]?name)\b[:\s]+([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){0,3})/i,
+    /\b(?:dear|hello|hi)\b[,\s]+([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+)?)/i,
+    /\bname\s*[:\-]\s*([A-Za-z][a-z]+(?:\s[A-Za-z][a-z]+){0,3})/i
+  ];
+  lines.forEach(function(line){
+    if(foundName) return;
+    NAME_INLINE_PATTERNS.forEach(function(rx){
+      if(foundName) return;
+      var nm = line.match(rx);
+      if(nm && !NAME_NOISE_RX.test(nm[1])){
+        ocrExtracted.name = titleCase(nm[1].trim()); foundName = true;
+      }
+    });
+  });
+
+  /* Pass 2: keyword line → name on next 1-2 lines */
+  if(!foundName){
+    var TRIG_RX = /\b(?:customer|consignee|recipient|receiver|shipper|sender|buyer|bill[\s\-]?to|ship[\s\-]?to)\b/i;
+    lines.forEach(function(line, i){
+      if(foundName || AWB_CTX_RX.test(line)) return;
+      if(TRIG_RX.test(line)){
+        for(var ni=i+1; ni<=Math.min(i+2, lines.length-1); ni++){
+          var cand = lines[ni].trim();
+          if(/^[A-Za-z][a-zA-Z]{1,20}(?:\s[A-Za-z][a-zA-Z]{1,20}){0,3}$/.test(cand)
+             && !NAME_NOISE_RX.test(cand) && !/\d/.test(cand) && cand.length < 50){
+            ocrExtracted.name = titleCase(cand); foundName = true; break;
+          }
+        }
+      }
+    });
+  }
+
+  /* Pass 3: fallback — standalone proper-name line */
+  if(!foundName){
+    lines.forEach(function(line){
+      if(foundName) return;
+      if(AWB_CTX_RX.test(line) || INV_CTX_RX.test(line) || NAME_NOISE_RX.test(line)) return;
+      if(/^[A-Z][a-zA-Z]{1,20}(?:\s[A-Z][a-zA-Z]{1,20}){0,3}$/.test(line)
+         && !/\d/.test(line) && line.length < 45){
+        ocrExtracted.name = titleCase(line); foundName = true;
+      }
+    });
+  }
+
+  /* ══ STEP 7: COURIER COMPANY ══
+     Dynamic multi-name lookup; preferred near courier-context labels.
+     Supports aliases and partial names.
+  */
+  var COURIERS = [
+    {names:['Delhivery'],                      label:'Delhivery'},
+    {names:['Blue Dart','Bluedart','BlueDart'], label:'Blue Dart Express'},
+    {names:['DTDC'],                            label:'DTDC Courier'},
+    {names:['Ekart','E-Kart','E-kart'],         label:'Ekart Logistics'},
+    {names:['Xpressbees','XpressBees','XB'],    label:'XpressBees'},
+    {names:['Shadowfax'],                       label:'Shadowfax'},
+    {names:['Ecom Express','EcomExpress','Ecom'],label:'Ecom Express'},
+    {names:['Shiprocket'],                      label:'Shiprocket'},
+    {names:['Shipway'],                         label:'Shipway'},
+    {names:['FedEx','Fedex'],                   label:'FedEx India'},
+    {names:['DHL'],                             label:'DHL Express'},
+    {names:['Speed Post','SpeedPost'],          label:'India Post Speed Post'},
+    {names:['India Post','IndiaPost'],          label:'India Post Parcel'},
+    {names:['Amazon Logistics','Amazon'],       label:'Amazon Logistics'},
+    {names:['Aramex'],                          label:'Aramex India'},
+    {names:['Rivigo'],                          label:'Rivigo'},
+    {names:['Gati','Gati-KWE','Gati KWE'],      label:'Gati-KWE'},
+    {names:['Safexpress'],                      label:'Safexpress'},
+    {names:['Pickrr'],                          label:'Pickrr'},
+    {names:['Porter'],                          label:'Porter Logistics'},
+    {names:['Dunzo'],                           label:'Dunzo Business'},
+    {names:['NimbusPost','Nimbus Post'],        label:'NimbusPost'},
+    {names:['Shyplite'],                        label:'Shyplite'},
+    {names:['iThink','Ithink'],                 label:'iThink Logistics'},
+    {names:['Smartr'],                          label:'Smartr Logistics'},
+    {names:['Meesho'],                          label:'Meesho Logistics'},
+    {names:['Flipkart'],                        label:'Ekart Logistics'},
+    {names:['Borzo'],                           label:'Borzo'},
+    {names:['UPS'],                             label:'UPS India'},
+    {names:['Professional Courier'],            label:'Professional Courier'},
+    {names:['First Flight'],                    label:'First Flight'},
+    {names:['Shree Maruti'],                    label:'Shree Maruti'},
+    {names:['VRL'],                             label:'VRL Logistics'},
+    {names:['TCI Express','TCI'],               label:'TCI Express'},
+    {names:['Pidge'],                           label:'Pidge'},
+    {names:['BlackBuck','Blackbuck'],           label:'BlackBuck'},
+    {names:['LoadShare','Loadshare'],           label:'LoadShare Networks'},
+    {names:['Spoton','SpotOn'],                 label:'Spoton Logistics'},
+    {names:['Movin'],                           label:'Movin'},
+    {names:['Dotzot'],                          label:'Dotzot'}
+  ];
+
+  var COURIER_CTX_RX = /\b(?:courier|logistics|shipped[\s\-]?(?:by|via|through)|carrier|transport(?:ed)?[\s\-]?(?:by|via)?|dispatched[\s\-]?(?:by|via)?|delivery[\s\-]?partner|service[\s\-]?provider|shipped[\s\-]?with)\b/i;
+  var foundCourier = false;
+
+  /* Pass 1: near courier-context label */
+  lines.forEach(function(line, i){
+    if(foundCourier) return;
+    if(COURIER_CTX_RX.test(line)){
+      for(var j=i; j<=Math.min(i+2, lines.length-1); j++){
+        if(foundCourier) break;
+        COURIERS.forEach(function(c){
+          if(foundCourier) return;
+          c.names.forEach(function(n){
+            if(foundCourier) return;
+            var rx = new RegExp('\\b'+n.replace(/[\s\-]/g,'[\\s\\-]*')+'\\b','i');
+            if(rx.test(lines[j])){ ocrExtracted.courier = c.label; foundCourier = true; }
+          });
+        });
+      }
+    }
+  });
+
+  /* Pass 2: scan all lines */
+  if(!foundCourier){
+    lines.forEach(function(line){
+      if(foundCourier) return;
+      COURIERS.forEach(function(c){
+        if(foundCourier) return;
+        c.names.forEach(function(n){
+          if(foundCourier) return;
+          var rx = new RegExp('\\b'+n.replace(/[\s\-]/g,'[\\s\\-]*')+'\\b','i');
+          if(rx.test(line)){ ocrExtracted.courier = c.label; foundCourier = true; }
+        });
+      });
+    });
+  }
+
+  /* ══ STEP 8: WEIGHT ══
+     Support: kg, kgs, grams, gm — grams auto-converted to kg.
+     Preferred near weight-context label, fallback scan.
+  */
+  var WEIGHT_KEY_RX = /\b(?:weight|wt\.?|actual[\s\-]?wt\.?|dead[\s\-]?wt\.?|charged[\s\-]?wt\.?|parcel[\s\-]?wt\.?|item[\s\-]?weight)\b/i;
+  var WT_KG_RX = /(\d+(?:\.\d+)?)\s*(?:kg|kgs|kilogram|kilograms)\b/i;
+  var WT_GM_RX = /(\d+(?:\.\d+)?)\s*(?:g|gm|gms|gram|grams)\b/i;
+  var foundWeight = false;
+
+  /* Pass 1: near weight-context label */
+  lines.forEach(function(line, i){
+    if(foundWeight) return;
+    if(WEIGHT_KEY_RX.test(line)){
+      for(var j=i; j<=Math.min(i+2, lines.length-1); j++){
+        var wm = lines[j].match(WT_KG_RX);
+        if(wm){ ocrExtracted.weight = parseFloat(wm[1]).toFixed(2); foundWeight = true; break; }
+        wm = lines[j].match(WT_GM_RX);
+        if(wm){ ocrExtracted.weight = (parseFloat(wm[1])/1000).toFixed(2); foundWeight = true; break; }
+      }
+    }
+  });
+
+  /* Pass 2: scan all lines */
+  if(!foundWeight){
+    lines.forEach(function(line){
+      if(foundWeight) return;
+      var wm = line.match(WT_KG_RX);
+      if(wm){ ocrExtracted.weight = parseFloat(wm[1]).toFixed(2); foundWeight = true; return; }
+      wm = line.match(WT_GM_RX);
+      if(wm){ ocrExtracted.weight = (parseFloat(wm[1])/1000).toFixed(2); foundWeight = true; }
+    });
+  }
+
+  /* ══ STEP 9: AMOUNT ══ */
+  var AMT_KEY_RX = /\b(?:total|amount|freight|charges?|cod|bill|payable|collect(?:able)?)\b/i;
+  var foundAmount = false;
+
+  /* Pass 1: near amount keyword */
+  lines.forEach(function(line, i){
+    if(foundAmount) return;
+    if(AMT_KEY_RX.test(line)){
+      for(var j=i; j<=Math.min(i+1, lines.length-1); j++){
+        var amm = lines[j].match(/[₹]?\s*([0-9,]+(?:\.[0-9]{1,2})?)/);
+        if(amm){
+          var v = parseFloat(amm[1].replace(/,/g,''));
+          if(v > 0 && v < 100000){ ocrExtracted.amount = v.toFixed(2); foundAmount = true; break; }
+        }
+      }
+    }
+  });
+
+  /* Pass 2: currency symbol scan */
+  if(!foundAmount){
+    lines.forEach(function(line){
+      if(foundAmount) return;
+      var amm = line.match(/(?:₹|Rs\.?)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i);
+      if(amm){
+        var v = parseFloat(amm[1].replace(/,/g,''));
+        if(v > 0 && v < 100000){ ocrExtracted.amount = v.toFixed(2); foundAmount = true; }
+      }
+    });
+  }
+
+  /* ══ STEP 10: PAYMENT STATUS ══ */
+  var flatLower = lines.join(' ').toLowerCase();
+  if(/\bpaid\b|\bcleared\b|\breceived\b/.test(flatLower))       ocrExtracted.status = 'paid';
+  else if(/\bdues?\b|\bpending\b|\bunpaid\b/.test(flatLower))   ocrExtracted.status = 'dues';
+
   /* ══ STEP 11: VALIDATION LAYER ══ */
 
   /* AWB cannot equal mobile number */
