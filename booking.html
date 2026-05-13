@@ -610,7 +610,7 @@ function startGlobalMusic() {
     var randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
     globalAudio = new Audio(randomTrack);
     globalAudio.loop = true;
-    globalAudio.volume = 0.3; // 30% volume
+    globalAudio.volume = 0.3; // 80% volume
     
     var playPromise = globalAudio.play();
     
